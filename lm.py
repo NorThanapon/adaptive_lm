@@ -220,35 +220,6 @@ class LM(object):
         mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
         return mean_loss, loss, logits
 
-    # def _backward(self, opt, loss):
-    #     """ Create gradient graph (including gradient clips).
-    #         Return clipped gradients and trainable variables
-    #     """
-    #     loss = loss * opt.num_steps
-        # emb_vars, rnn_vars, softmax_vars, other_vars = self._get_variables(opt)
-        # all_vars = emb_vars + rnn_vars + softmax_vars + other_vars
-        # grads = tf.gradients(loss, all_vars)
-        # orig_grads = grads[:]
-        # # getting embedding gradients from shards
-        # emb_grads = grads[:len(emb_vars)]
-        # grads = grads[len(emb_vars):]
-        # for i in range(len(emb_grads)):
-        #     assert isinstance(emb_grads[i], tf.IndexedSlices)
-        #     emb_grads[i] = tf.IndexedSlices(
-        #         emb_grads[i].values * opt.batch_size, emb_grads[i].indices,
-        #         emb_grads[i].dense_shape)
-        # # getting rnn gradients for cliping
-        # rnn_grads = grads[:len(rnn_vars)]
-        # # rnn_grads, rnn_norm = tf.clip_by_global_norm(rnn_grads, opt.max_grad_norm)
-        # # the rest of the gradients
-        # rest_grads = grads[len(rnn_vars):]
-        # all_grads = emb_grads + rnn_grads + rest_grads
-        # clipped_grads, _norm = tf.clip_by_global_norm(
-        #     all_grads, opt.max_grad_norm)
-        # assert len(clipped_grads) == len(orig_grads)
-        # return clipped_grads, all_vars
-
-
     def _get_variables(self, opt):
         emb_vars = None
         if hasattr(opt, 'input_emb_vars'):
@@ -263,6 +234,33 @@ class LM(object):
     def _get_additional_variables(self):
         """ Placeholder method """
         return []
+
+class MaxTargetLossLM(LM):
+    def _softmax_loss_graph(self, opt, softmax_size, state, y, w):
+        """ Create softmax and loss graph """
+        softmax_w = self._softmax_w(opt, softmax_size)
+        _softmax_w_size = sum([v.get_shape()[0].value for v in softmax_w])
+        softmax_b = tf.get_variable("softmax_b", [_softmax_w_size])
+        logits = None
+        with tf.variable_scope("softmax_w"):
+            full_softmax_w = tf.reshape(
+                tf.concat(softmax_w, 1), [-1, softmax_size])
+        logits = tf.matmul(
+            state, full_softmax_w, transpose_b=True) + softmax_b
+        if hasattr(opt, 'logit_mask'):
+            logits = logits + self._logit_mask(opt)
+        self.local_logit_mask = tf.placeholder(
+            tf.float32, [opt.batch_size * opt.num_steps, _softmax_w_size],
+            name='local_logit_mask')
+        targets = tf.stop_gradient(
+            tf.argmax(logits + self.local_logit_mask, axis=1))
+        self.targets = targets
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            logits=logits, labels=targets)
+        flat_w = tf.reshape(w, [-1])
+        sum_loss = tf.reduce_sum(loss * flat_w)
+        mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
+        return mean_loss, loss, logits
 
 class LMwAF(LM):
 
