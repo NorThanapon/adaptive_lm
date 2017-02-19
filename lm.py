@@ -316,12 +316,16 @@ class MaxoutLogitsLM(MaxTargetLossLM):
             logits,
             [opt.batch_size * opt.num_steps, - 1, opt.num_channels])
         max_logits = tf.reduce_max(channel_logits, axis=2)
-        sum_logits = tf.reduce_sum(channel_logits, axis=2)
         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits=max_logits, labels=targets)
         flat_w = tf.reshape(w, [-1])
         sum_loss = tf.reduce_sum(loss * flat_w)
         mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
+        probs = tf.softmax(logits)
+        channel_probs = tf.reshape(
+            probs,
+            [opt.batch_size * opt.num_steps, - 1, opt.num_channels])
+        sum_logits = tf.log(tf.reduce_sum(channel_probs, axis=2))
         mloss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits=sum_logits, labels=targets)
         sum_mloss = tf.reduce_sum(mloss * flat_w)
