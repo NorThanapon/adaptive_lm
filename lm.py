@@ -252,13 +252,13 @@ class MaxTargetLossLM(LM):
     #     self.merged_loss = mean_loss
     #     self._merged_all_loss = loss
 
-    def _merged_ce_loss(self, opt, logits, y, flat_w):
+    def _merged_ce_loss(self, opt, logits, targets, flat_w):
         probs = tf.nn.softmax(logits)
         self.output_probs = tf.transpose(
             tf.segment_sum(tf.transpose(probs), opt.vocab_segments))
         merged_logits = tf.log(self.output_probs)
         loss = tf.losses.sparse_softmax_cross_entropy(
-            tf.reshape(y, [-1, 1]), merged_logits)
+            targets, merged_logits)
         sum_loss = tf.reduce_sum(loss * flat_w)
         mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
         self.merged_loss = mean_loss
@@ -278,7 +278,6 @@ class MaxTargetLossLM(LM):
         self.targets = targets
 
     def _softmax_loss_graph(self, opt, softmax_size, state, y, w):
-        """ Create softmax and loss graph """
         softmax_w = self._softmax_w(opt, softmax_size)
         _softmax_w_size = sum([v.get_shape()[0].value for v in softmax_w])
         softmax_b = tf.get_variable("softmax_b", [_softmax_w_size])
@@ -296,8 +295,33 @@ class MaxTargetLossLM(LM):
         flat_w = tf.reshape(w, [-1])
         sum_loss = tf.reduce_sum(loss * flat_w)
         mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
-        self._merged_ce_loss(opt, logits, y, flat_w)
+        self._merged_ce_loss(opt, logits, tf.reshape(y, [-1]), flat_w)
         return mean_loss, loss, logits
+
+class MaxoutLogitsLM(MaxTargetLossLM):
+    def _softmax_loss_graph(self, opt, softmax_size, state, y, w):
+        softmax_w = self._softmax_w(opt, softmax_size)
+        _softmax_w_size = sum([v.get_shape()[0].value for v in softmax_w])
+        softmax_b = tf.get_variable("softmax_b", [_softmax_w_size])
+        logits = None
+        with tf.variable_scope("softmax_w"):
+            full_softmax_w = tf.reshape(
+                tf.concat(softmax_w, 1), [-1, softmax_size])
+        logits = tf.matmul(
+            state, full_softmax_w, transpose_b=True) + softmax_b
+        if hasattr(opt, 'logit_mask'):
+            logits = logits + self._logit_mask(opt)
+        targets = tf.reshape(y, [-1])
+        segments = tf.constant(opt.vocab_segments, dtype=tf.int32)
+        max_logits = tf.transpose(tf.segment_max(
+            tf.transpose(logits), segments))
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            logits=max_logits, labels=targets)
+        flat_w = tf.reshape(w, [-1])
+        sum_loss = tf.reduce_sum(loss * flat_w)
+        mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
+        self._merged_ce_loss(opt, logits, targets, flat_w)
+        return mean_loss, loss, max_logits
 
 class LMwAF(LM):
 
