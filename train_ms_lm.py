@@ -68,9 +68,8 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
     for step, (x, y, w, l, seq_len) in enumerate(data_iter.iterate_epoch(
         m.opt.batch_size, m.opt.num_steps)):
         sparse_mask_indices = mapper.create_sparse_indices(y)
-        feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len,
-                     m.sparse_logit_mask:sparse_mask_indices}
-        fetches = [m.output_probs]
+        feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len}
+        fetches = [m.merged_loss]
         f_state_start = len(fetches)
         if opt.sen_independent and data_iter.is_new_sen():
             state = []
@@ -82,11 +81,7 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
             fetches.append(c)
             fetches.append(h)
         res = sess.run(fetches, feed_dict)
-        probs = res[0]
-        merged_probs = mapper.reduce_sum(probs)
-        cost = sess.run(m.merged_loss,
-                               feed_dict={m.y: y, m.w: w,
-                                          m.merged_probs:merged_probs})
+        cost = res[0]
         state_flat = res[f_state_start:]
         state = [state_flat[i:i+2] for i in range(0, len(state_flat), 2)]
         b_num_words = np.sum(w)
@@ -94,16 +89,16 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
         costs += cost * b_num_words
     return np.exp(costs / num_words), step
 
-def main(opt):
+def main(lm_opt):
     model_prefix = ['latest_lm']
     dataset = ['train', 'valid']
     lm_data, lm_vocab = load_datasets(lm_opt, dataset=dataset)
     mapper = data_utils.OneToManyMap.from_map_file(lm_opt.map_filepath)
     lm_opt.vocab_size = lm_vocab.vocab_size
     lm_opt.softmax_vocab_size = mapper.total_size
+    lm_opt.vocab_segments = mapper.segments
     init_scale = lm_opt.init_scale
-    sess_config =tf.ConfigProto(log_device_placement=False,
-                                device_count = {'GPU': 0})
+    sess_config = common_utils.get_tf_sess_config(lm_opt)
     with tf.Session(config=sess_config) as sess:
         initializer = tf.random_uniform_initializer(-init_scale, init_scale)
         with tf.variable_scope('LM', reuse=None, initializer=initializer):
