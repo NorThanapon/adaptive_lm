@@ -29,30 +29,30 @@ logger.setLevel(logging.DEBUG)
 # Test DataIterator
 ####################################################
 
-vocab = data_utils.Vocabulary.from_vocab_file('data/ptb/preprocess/vocab.txt')
-vocab2 = data_utils.Vocabulary.from_vocab_file('data/common_defs_v1.2/wordnet/shortlist/shortlist_all_ptb.txt')
-loader = data_utils.DataIterator(vocab, 'data/ptb/preprocess/valid.jsonl',
-                                 shuffle_data=False, y_vocab=vocab2)
-vocab3 = vocab
-vocab = vocab2
-tokens = 0
-batch = 32
-rho = 30
-data = [[] for _ in range(batch)]
-for step, (x, y, w, l, r) in enumerate(loader.iterate_epoch(batch, rho)):
-    tokens += w.sum()
-    for i in range(batch):
-        for j in range(rho):
-            if y[i, j] != vocab.eos_id and w[i, j] == 1:
-                data[i].append(vocab.i2w(y[i,j]))
-            elif y[i, j] == vocab.eos_id and w[i, j] == 1:
-                data[i].append("\n")
-print('Num tokens from iterator: {} (should be {})'.format(
-    int(tokens), len(loader._data) - 1))
-with open('tmp_valid.txt', 'w') as ofp:
-    for i in range(batch):
-        ofp.write(' ')
-        ofp.write(' '.join(data[i]))
+# vocab = data_utils.Vocabulary.from_vocab_file('data/ptb/preprocess/vocab.txt')
+# vocab2 = data_utils.Vocabulary.from_vocab_file('data/common_defs_v1.2/wordnet/shortlist/shortlist_all_ptb.txt')
+# loader = data_utils.DataIterator(vocab, 'data/ptb/preprocess/valid.jsonl',
+#                                  shuffle_data=False, y_vocab=vocab2)
+# vocab3 = vocab
+# vocab = vocab2
+# tokens = 0
+# batch = 32
+# rho = 30
+# data = [[] for _ in range(batch)]
+# for step, (x, y, w, l, r) in enumerate(loader.iterate_epoch(batch, rho)):
+#     tokens += w.sum()
+#     for i in range(batch):
+#         for j in range(rho):
+#             if y[i, j] != vocab.eos_id and w[i, j] == 1:
+#                 data[i].append(vocab.i2w(y[i,j]))
+#             elif y[i, j] == vocab.eos_id and w[i, j] == 1:
+#                 data[i].append("\n")
+# print('Num tokens from iterator: {} (should be {})'.format(
+#     int(tokens), len(loader._data) - 1))
+# with open('tmp_valid.txt', 'w') as ofp:
+#     for i in range(batch):
+#         ofp.write(' ')
+#         ofp.write(' '.join(data[i]))
 
 ####################################################
 # Test SentenceIterator
@@ -136,3 +136,13 @@ with open('tmp_valid.txt', 'w') as ofp:
 # args = parser.parse_args()
 # opt.update_from_ns(args)
 # data, vocab = exp_utils.load_datasets(opt, x_vocab=vocab)
+
+####################################################
+# Test OneToManyMap
+####################################################
+
+m = data_utils.OneToManyMap.from_map_file('experiments/multi-softmax/1to3.map.txt')
+y = np.array([[15]])
+mask = m.create_map_mask(y)
+for i in m._map[15]:
+    print(mask[0,i])

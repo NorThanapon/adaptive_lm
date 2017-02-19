@@ -176,11 +176,14 @@ class LM(object):
 
     def _softmax_w(self, opt, softmax_size):
         softmax_w = None
+        softmax_vocab_size = opt.vocab_size
+        if hasattr(opt, 'softmax_vocab_size'):
+            softmax_vocab_size = opt.softmax_vocab_size
         if hasattr(opt, 'softmax_w_vars'):
             softmax_w = opt.softmax_w_vars
         else:
             softmax_w = sharded_variable(
-                "softmax_w", [opt.vocab_size, softmax_size], opt.num_shards)
+                "softmax_w", [softmax_vocab_size, softmax_size], opt.num_shards)
         return softmax_w
 
     def _logit_mask(self, opt):
@@ -236,6 +239,19 @@ class LM(object):
         return []
 
 class MaxTargetLossLM(LM):
+
+    def _merged_ce_loss(self, opt, y, flat_w):
+        self.merged_probs = tf.placeholder(
+            tf.float32, [opt.batch_size * opt.num_steps, opt.vocab_size],
+            name="merged_probs")
+        merged_logits = tf.log(self.merged_probs)
+        loss = tf.losses.sparse_softmax_cross_entropy(
+            tf.reshape(y, [-1, 1]), merged_logits)
+        sum_loss = tf.reduce_sum(loss * flat_w)
+        mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
+        self.merged_loss = mean_loss
+        self._merged_all_loss = loss
+
     def _softmax_loss_graph(self, opt, softmax_size, state, y, w):
         """ Create softmax and loss graph """
         softmax_w = self._softmax_w(opt, softmax_size)
@@ -260,6 +276,8 @@ class MaxTargetLossLM(LM):
         flat_w = tf.reshape(w, [-1])
         sum_loss = tf.reduce_sum(loss * flat_w)
         mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
+        self.output_probs = tf.nn.softmax(logits)
+        self._merged_ce_loss(opt, y, flat_w)
         return mean_loss, loss, logits
 
 class LMwAF(LM):

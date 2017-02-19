@@ -141,6 +141,44 @@ class Vocabulary(object):
             mask[full_vocab.w2i(w)] = 1
         return mask
 
+class OneToManyMap(object):
+    def __init__(self):
+        self._map = []
+        self._totoal_size = 0
+
+    @property
+    def total_size(self):
+        return self._totoal_size
+
+    def create_map_mask(self, original_ids, mask_val=-100000):
+        ids = np.reshape(original_ids, [-1])
+        mask = np.zeros((len(ids), self.total_size))
+        mask[:] = mask_val
+        for i in range(len(ids)):
+            idx = ids[i]
+            for d in self._map[idx]:
+                mask[i, d] = 0
+        return mask
+
+    def reduce_sum(self, tensor2d):
+        """ always sum last dimension """
+        outputs = np.zeros((tensor2d.shape[0], len(self._map)),
+                           dtype=tensor2d.dtype)
+        for j in range(len(self._map)):
+            for k in self._map[j]:
+                outputs[:,j] += tensor2d[:,k]
+        return outputs
+
+    @staticmethod
+    def from_map_file(filepath):
+        vmap = OneToManyMap()
+        with open(filepath) as ifp:
+            for line in ifp:
+                parts = line.strip().split()
+                vmap._map.append([int(i) for i in parts])
+                vmap._totoal_size += len(parts)
+        return vmap
+
 ######################################################
 # DataIterator
 ######################################################
@@ -447,3 +485,69 @@ class SenLabelIterator(SentenceIterator):
         if self.is_new_sen() and self._num_seeds - 1 > 0:
             self.w[:, 0:self._num_seeds - 1] = 0
         return self.x, self.y, self.w, self._l_arr, self.seq_len
+
+######################################################
+# Module Functions
+######################################################
+
+def serialize_iterator(data_filepath, vocab_filepath, out_filepath):
+    vocab = Vocabulary.from_vocab_file(vocab_filepath)
+    loader = DataIterator(vocab=vocab, file_path=data_filepath)
+    with open(out_filepath, 'w') as ofp:
+        cPickle.dump(loader, ofp)
+
+def corpus2bow(data_filepath, vocab_filepath, out_filepath):
+    vocab = Vocabulary.from_vocab_file(vocab_filepath)
+    corpus_bow = {}
+    with open(data_filepath) as ifp:
+        for i, line in enumerate(ifp):
+            entry = json.loads(line)
+            bow = np.zeros(vocab.vocab_size)
+            for l in entry['lines']:
+                bow = vocab.dense_bow(l.split(), bow, lowcase=True)
+            corpus_bow[entry['key']] = bow
+    with open(out_filepath, 'w') as ofp:
+        cPickle.dump(corpus_bow, ofp)
+
+def serialize_corpus(data_dir, split=['train', 'valid', 'test']):
+    for s in split:
+        corpus2bow(os.path.join(data_dir, '{}.jsonl'.format(s)),
+                   os.path.join(data_dir, 'bow_vocab.txt'),
+                   os.path.join(data_dir, '{}_bow.pickle'.format(s)))
+        serialize_iterator(os.path.join(data_dir, '{}.jsonl'.format(s)),
+                   os.path.join(data_dir, 'vocab.txt'),
+                   os.path.join(data_dir, '{}_iter.pickle'.format(s)))
+
+def map_vocab_defs(vocab_filepath, def_prep_dir, out_filepath):
+    vocab_t = Vocabulary.from_vocab_file(vocab_filepath)
+    vocab_d = Vocabulary.from_vocab_file(
+        os.path.join(def_prep_dir, 'vocab.txt'))
+    definitions = {}
+    max_len = 0
+    lines = 0
+    with open(os.path.join(def_prep_dir, 'train.jsonl')) as ifp:
+        for line in ifp:
+            lines += 1
+            e = json.loads(line)
+            word = e['meta']['word']
+            defi = e['lines'][0].split()
+            if word not in definitions:
+                definitions[word] = []
+            definitions[word].append(defi)
+            if len(defi) > max_len:
+                max_len = len(defi)
+    data = np.zeros([lines + 1, max_len], np.int32)
+    data[:] = vocab_d.eos_id
+    index = np.zeros([vocab_t.vocab_size + 1], np.int32)
+    for i in range(vocab_t.vocab_size):
+        w = vocab_t.i2w(i)
+        if w in definitions:
+            defs = definitions[w]
+            index[i+1] = index[i] + len(defs)
+            for j in range(len(defs)):
+                for k, t in enumerate(defs[j]):
+                    data[index[i] + j, k] = vocab_d.w2i(defs[j][k])
+        else:
+            index[i+1] = index[i]
+    with open(out_filepath, 'w') as ofp:
+        cPickle.dump((index, data), ofp)

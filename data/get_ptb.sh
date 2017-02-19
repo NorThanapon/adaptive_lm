@@ -3,7 +3,7 @@
 echo "[1/3] Downloading data..."
 wget http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz
 echo "[2/3] Extracting files..."
-tar --warning=no-unknown-keyword -xf simple-examples.tgz
+tar -xf simple-examples.tgz
 rm simple-examples.tgz
 mkdir ptb
 mv simple-examples/data/ptb.test.txt ptb/test.txt
