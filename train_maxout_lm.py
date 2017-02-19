@@ -55,38 +55,41 @@ def run_train_epoch(sess, m, data_iter, opt, mapper,
                     num_words / (time.time() - start_time)))
     return np.exp(costs / num_words), step
 
-# def run_test_epoch(sess, m, data_iter, opt, mapper):
-#     """ train the model on the given data. """
-#     logger = logging.getLogger("exp")
-#     start_time = time.time()
-#     costs = 0.0
-#     num_words = 0
-#     state = []
-#     for c, h in m.initial_state:
-#         state.append((c.eval(), h.eval()))
-#     for step, (x, y, w, l, seq_len) in enumerate(data_iter.iterate_epoch(
-#         m.opt.batch_size, m.opt.num_steps)):
-#         sparse_mask_indices = mapper.create_sparse_indices(y)
-#         feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len}
-#         fetches = [m.merged_loss]
-#         f_state_start = len(fetches)
-#         if opt.sen_independent and data_iter.is_new_sen():
-#             state = []
-#             for c, h in m.initial_state:
-#                 state.append((c.eval(), h.eval()))
-#         for i, (c, h) in enumerate(m.initial_state):
-#             feed_dict[c], feed_dict[h] = state[i]
-#         for c, h in m.final_state:
-#             fetches.append(c)
-#             fetches.append(h)
-#         res = sess.run(fetches, feed_dict)
-#         cost = res[0]
-#         state_flat = res[f_state_start:]
-#         state = [state_flat[i:i+2] for i in range(0, len(state_flat), 2)]
-#         b_num_words = np.sum(w)
-#         num_words += b_num_words
-#         costs += cost * b_num_words
-#     return np.exp(costs / num_words), step
+def run_test_epoch(sess, m, data_iter, opt, mapper):
+    """ train the model on the given data. """
+    logger = logging.getLogger("exp")
+    start_time = time.time()
+    costs = 0.0
+    costs2 = 0.0
+    num_words = 0
+    state = []
+    for c, h in m.initial_state:
+        state.append((c.eval(), h.eval()))
+    for step, (x, y, w, l, seq_len) in enumerate(data_iter.iterate_epoch(
+        m.opt.batch_size, m.opt.num_steps)):
+        sparse_mask_indices = mapper.create_sparse_indices(y)
+        feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len}
+        fetches = [m.loss, m.merged_loss]
+        f_state_start = len(fetches)
+        if opt.sen_independent and data_iter.is_new_sen():
+            state = []
+            for c, h in m.initial_state:
+                state.append((c.eval(), h.eval()))
+        for i, (c, h) in enumerate(m.initial_state):
+            feed_dict[c], feed_dict[h] = state[i]
+        for c, h in m.final_state:
+            fetches.append(c)
+            fetches.append(h)
+        res = sess.run(fetches, feed_dict)
+        cost = res[0]
+        cost2 = res[1]
+        state_flat = res[f_state_start:]
+        state = [state_flat[i:i+2] for i in range(0, len(state_flat), 2)]
+        b_num_words = np.sum(w)
+        num_words += b_num_words
+        costs += cost * b_num_words
+        costs2 += cost2 * b_num_words
+    return np.exp(costs / num_words), np.exp(costs2 / num_words), step
 
 def main(lm_opt):
     model_prefix = ['latest_lm']
@@ -132,8 +135,9 @@ def main(lm_opt):
             lm_train_ppl, _ = run_train_epoch(sess, lm_train, lm_data['train'],
                                               lm_opt, mapper, lm_train_op)
             logger.info('- Validating LM...')
-            lm_valid_ppl, _ = run_test_epoch(sess, lm_valid, lm_data['valid'],
+            lm_valid_ppl, p, _ = run_test_epoch(sess, lm_valid, lm_data['valid'],
                                              lm_opt, mapper)
+            logger.debug('{} vs {}'.format(lm_valid_ppl, p))
             logger.info('----------------------------------')
             logger.info('LM post epoch routine...')
             done_training = run_post_epoch(
