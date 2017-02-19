@@ -252,6 +252,19 @@ class MaxTargetLossLM(LM):
         self.merged_loss = mean_loss
         self._merged_all_loss = loss
 
+    def _max_targets(self, opt, _softmax_w_size, logits):
+        self.sparse_logit_mask = tf.placeholder(
+            tf.int32, [None, 2],
+            name='sparse_logit_mask')
+        self.local_logit_mask = tf.sparse_to_dense(
+            sparse_indices=self.sparse_logit_mask,
+            sparse_values=0.0,
+            default_value=-1e5,
+            output_shape=[opt.batch_size * opt.num_steps, _softmax_w_size])
+        targets = tf.stop_gradient(
+            tf.argmax(logits + self.local_logit_mask, axis=1))
+        self.targets = targets
+
     def _softmax_loss_graph(self, opt, softmax_size, state, y, w):
         """ Create softmax and loss graph """
         softmax_w = self._softmax_w(opt, softmax_size)
@@ -265,22 +278,9 @@ class MaxTargetLossLM(LM):
             state, full_softmax_w, transpose_b=True) + softmax_b
         if hasattr(opt, 'logit_mask'):
             logits = logits + self._logit_mask(opt)
-        # self.local_logit_mask = tf.placeholder(
-        #     tf.float32, [opt.batch_size * opt.num_steps, _softmax_w_size],
-        #     name='local_logit_mask')
-        self.sparse_logit_mask = tf.placeholder(
-            tf.int32, [None, 2],
-            name='sparse_logit_mask')
-        self.local_logit_mask = tf.sparse_to_dense(
-            sparse_indices=self.sparse_logit_mask,
-            sparse_values=0.0,
-            default_value=-1e5,
-            output_shape=[opt.batch_size * opt.num_steps, _softmax_w_size])
-        targets = tf.stop_gradient(
-            tf.argmax(logits + self.local_logit_mask, axis=1))
-        self.targets = targets
+        self._max_targets(opt, _softmax_w_size, logits)
         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-            logits=logits, labels=targets)
+            logits=logits, labels=self.targets)
         flat_w = tf.reshape(w, [-1])
         sum_loss = tf.reduce_sum(loss * flat_w)
         mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
