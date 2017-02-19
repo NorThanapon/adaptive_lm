@@ -298,7 +298,7 @@ class MaxTargetLossLM(LM):
         self._merged_ce_loss(opt, logits, tf.reshape(y, [-1]), flat_w)
         return mean_loss, loss, logits
 
-class MaxoutLogitsLM(MaxTargetLossLM):
+class MaxoutLogitsLM(LM):
     def _softmax_loss_graph(self, opt, softmax_size, state, y, w):
         softmax_w = self._softmax_w(opt, softmax_size)
         _softmax_w_size = sum([v.get_shape()[0].value for v in softmax_w])
