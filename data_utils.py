@@ -153,7 +153,7 @@ class OneToManyMap(object):
         return self._totoal_size
 
     @property
-    def man_num_values(self):
+    def max_num_values(self):
         return self._max_num_values
 
     @property
