@@ -141,7 +141,7 @@ logger.setLevel(logging.DEBUG)
 # Test OneToManyMap
 ####################################################
 
-m = data_utils.OneToManyMap.from_map_file('experiments/multi-softmax/1to3.map.txt')
+m = data_utils.OneToManyMap.from_map_file('experiments/multi-softmax/ptb/1to2.map.txt')
 y = np.array([[15]])
 mask = m.create_map_mask(y)
 for i in m._map[15]:

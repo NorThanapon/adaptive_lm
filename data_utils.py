@@ -144,6 +144,7 @@ class Vocabulary(object):
 class OneToManyMap(object):
     def __init__(self):
         self._map = []
+        self._segments = []
         self._totoal_size = 0
         self._max_num_values = 0
 
@@ -154,6 +155,10 @@ class OneToManyMap(object):
     @property
     def man_num_values(self):
         return self._max_num_values
+
+    @property
+    def segments(self):
+        return self._segments
 
     def create_map_mask(self, original_ids, mask_val=-100000):
         ids = np.reshape(original_ids, [-1])
@@ -189,11 +194,12 @@ class OneToManyMap(object):
         vmap = OneToManyMap()
         max_num = 0
         with open(filepath) as ifp:
-            for line in ifp:
+            for k, line in enumerate(ifp):
                 parts = line.strip().split()
                 vmap._map.append([int(i) for i in parts])
                 vmap._totoal_size += len(parts)
                 max_num = max(max_num, len(parts))
+                vmap._segments.extend([k for _ in range(len(parts))])
         vmap._max_num_values = max_num
         return vmap
 
