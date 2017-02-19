@@ -102,8 +102,8 @@ def main(opt):
     lm_opt.vocab_size = lm_vocab.vocab_size
     lm_opt.softmax_vocab_size = mapper.total_size
     init_scale = lm_opt.init_scale
-    sess_config =tf.ConfigProto(log_device_placement=False,
-                                device_count = {'GPU': 0})
+    sess_config =tf.ConfigProto(log_device_placement=False)
+                                # device_count = {'GPU': 0})
     with tf.Session(config=sess_config) as sess:
         initializer = tf.random_uniform_initializer(-init_scale, init_scale)
         with tf.variable_scope('LM', reuse=None, initializer=initializer):
