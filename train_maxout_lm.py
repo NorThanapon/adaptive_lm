@@ -89,7 +89,7 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
         num_words += b_num_words
         costs += cost * b_num_words
         costs2 += cost2 * b_num_words
-    return np.exp(costs2 / num_words), np.exp(costs1 / num_words), step
+    return np.exp(costs2 / num_words), np.exp(costs / num_words), step
 
 def main(lm_opt):
     model_prefix = ['latest_lm']
