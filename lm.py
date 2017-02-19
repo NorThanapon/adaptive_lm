@@ -321,7 +321,7 @@ class MaxoutLogitsLM(MaxTargetLossLM):
         flat_w = tf.reshape(w, [-1])
         sum_loss = tf.reduce_sum(loss * flat_w)
         mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
-        probs = tf.softmax(logits)
+        probs = tf.nn.softmax(logits)
         channel_probs = tf.reshape(
             probs,
             [opt.batch_size * opt.num_steps, - 1, opt.num_channels])
