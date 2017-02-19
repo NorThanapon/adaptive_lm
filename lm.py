@@ -265,9 +265,17 @@ class MaxTargetLossLM(LM):
             state, full_softmax_w, transpose_b=True) + softmax_b
         if hasattr(opt, 'logit_mask'):
             logits = logits + self._logit_mask(opt)
-        self.local_logit_mask = tf.placeholder(
-            tf.float32, [opt.batch_size * opt.num_steps, _softmax_w_size],
-            name='local_logit_mask')
+        # self.local_logit_mask = tf.placeholder(
+        #     tf.float32, [opt.batch_size * opt.num_steps, _softmax_w_size],
+        #     name='local_logit_mask')
+        self.sparse_logit_mask = tf.placeholder(
+            tf.int32, [None, 2],
+            name='sparse_logit_mask')
+        self.local_logit_mask = tf.sparse_to_dense(
+            sparse_indices=self.sparse_logit_mask,
+            sparse_values=0.0,
+            default_value=-1e5,
+            output_shape=[opt.batch_size * opt.num_steps, _softmax_w_size])
         targets = tf.stop_gradient(
             tf.argmax(logits + self.local_logit_mask, axis=1))
         self.targets = targets

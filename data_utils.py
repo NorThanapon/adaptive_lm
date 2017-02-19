@@ -145,10 +145,15 @@ class OneToManyMap(object):
     def __init__(self):
         self._map = []
         self._totoal_size = 0
+        self._max_num_values = 0
 
     @property
     def total_size(self):
         return self._totoal_size
+
+    @property
+    def man_num_values(self):
+        return self._max_num_values
 
     def create_map_mask(self, original_ids, mask_val=-100000):
         ids = np.reshape(original_ids, [-1])
@@ -159,6 +164,16 @@ class OneToManyMap(object):
             for d in self._map[idx]:
                 mask[i, d] = 0
         return mask
+
+    def create_sparse_indices(self, original_ids):
+        ids = np.reshape(original_ids, [-1])
+        sparse_indices = []
+        for i in range(len(ids)):
+            idx = ids[i]
+            for d in self._map[idx]:
+                sparse_indices.append([i, d])
+        return np.array(sparse_indices)
+
 
     def reduce_sum(self, tensor2d):
         """ always sum last dimension """
@@ -172,11 +187,14 @@ class OneToManyMap(object):
     @staticmethod
     def from_map_file(filepath):
         vmap = OneToManyMap()
+        max_num = 0
         with open(filepath) as ifp:
             for line in ifp:
                 parts = line.strip().split()
                 vmap._map.append([int(i) for i in parts])
                 vmap._totoal_size += len(parts)
+                max_num = max(max_num, len(parts))
+        vmap._max_num_values = max_num
         return vmap
 
 ######################################################

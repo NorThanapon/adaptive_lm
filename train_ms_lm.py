@@ -29,9 +29,9 @@ def run_train_epoch(sess, m, data_iter, opt, mapper,
         state.append((c.eval(), h.eval()))
     for step, (x, y, w, l, seq_len) in enumerate(data_iter.iterate_epoch(
         m.opt.batch_size, m.opt.num_steps)):
-        mask = mapper.create_map_mask(y)
-        feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len,
-                     m.local_logit_mask:mask}
+        sparse_mask_indices = mapper.create_sparse_indices(y)
+        feed_dict = {m.x: x, m.w: w, m.seq_len: seq_len,
+                     m.sparse_logit_mask:sparse_mask_indices}
         fetches = [m.loss, train_op]
         f_state_start = len(fetches)
         if opt.sen_independent and data_iter.is_new_sen():
@@ -67,9 +67,9 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
         state.append((c.eval(), h.eval()))
     for step, (x, y, w, l, seq_len) in enumerate(data_iter.iterate_epoch(
         m.opt.batch_size, m.opt.num_steps)):
-        mask = mapper.create_map_mask(y)
+        sparse_mask_indices = mapper.create_sparse_indices(y)
         feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len,
-                     m.local_logit_mask:mask}
+                     m.sparse_logit_mask:sparse_mask_indices}
         fetches = [m.output_probs]
         f_state_start = len(fetches)
         if opt.sen_independent and data_iter.is_new_sen():
