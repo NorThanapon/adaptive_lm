@@ -88,7 +88,7 @@ def main(lm_opt):
         logger.info('Start testing...')
         lm_ppl, _ = run_test_epoch(sess, lm_valid, lm_data[dataset[0]],
                                    lm_opt, mapper)
-        logger.info('PPL: '.format(lm_ppl))
+        logger.info('PPL: {}'.format(lm_ppl))
 
 if __name__ == "__main__":
     global_time = time.time()
