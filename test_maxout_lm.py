@@ -17,9 +17,14 @@ import common_utils
 import data_utils
 from exp_utils import *
 
-_c = None
+def write_token_max_channel(ofp, channel_probs, y):
+    max_channels = np.argmax(channel_probs, axis=2)
+    targets = np.reshape(y, [-1])
+    for i = range(len(targets)):
+        ofp.write('{}\t{}'.format(targets[i], max_channels[i][targets[i]]))
 
-def run_test_epoch(sess, m, data_iter, opt, mapper):
+def run_test_epoch(sess, m, data_iter, opt, mapper,
+                   token_max_channel=False):
     """ train the model on the given data. """
     logger = logging.getLogger("exp")
     start_time = time.time()
@@ -50,8 +55,8 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
         b_num_words = np.sum(w)
         num_words += b_num_words
         costs += cost * b_num_words
-        global c
-        c = res[1]
+        if token_max_channel:
+            write_token_max_channel(opt.channel_log, res[1], y)
     return np.exp(costs / num_words), step
 
 def main(lm_opt):
@@ -104,5 +109,6 @@ if __name__ == "__main__":
     else:
         logger.setLevel(logging.INFO)
     logger.info('Configurations:\n{}'.format(lm_opt.__repr__()))
+    lm_opt.channel_log = open('channel_log.txt', 'w')
     main(lm_opt)
     logger.info('Total time: {}s'.format(time.time() - global_time))
