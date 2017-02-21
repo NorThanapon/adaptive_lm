@@ -20,11 +20,10 @@ from exp_utils import *
 def write_token_max_channel(ofp, channel_probs, y):
     max_channels = np.argmax(channel_probs, axis=2)
     targets = np.reshape(y, [-1])
-    for i = range(len(targets)):
-        ofp.write('{}\t{}'.format(targets[i], max_channels[i][targets[i]]))
+    for i in range(len(targets)):
+        ofp.write('{}\t{}\n'.format(targets[i], max_channels[i][targets[i]]))
 
-def run_test_epoch(sess, m, data_iter, opt, mapper,
-                   token_max_channel=False):
+def run_test_epoch(sess, m, data_iter, opt, mapper):
     """ train the model on the given data. """
     logger = logging.getLogger("exp")
     start_time = time.time()
@@ -55,7 +54,7 @@ def run_test_epoch(sess, m, data_iter, opt, mapper,
         b_num_words = np.sum(w)
         num_words += b_num_words
         costs += cost * b_num_words
-        if token_max_channel:
+        if opt.channel_log is not None:
             write_token_max_channel(opt.channel_log, res[1], y)
     return np.exp(costs / num_words), step
 
@@ -100,6 +99,8 @@ if __name__ == "__main__":
     parser = common_utils.get_common_argparse()
     parser.add_argument('--map_filepath', type=str,
                         default='experiments/multi-softmax/ptb/1to2.map.txt')
+    parser.add_argument('--channel_log_file', type=str,
+                        default='')
     args = parser.parse_args()
     lm_opt = common_utils.Bunch.default_model_options()
     lm_opt.update_from_ns(args)
@@ -109,6 +110,8 @@ if __name__ == "__main__":
     else:
         logger.setLevel(logging.INFO)
     logger.info('Configurations:\n{}'.format(lm_opt.__repr__()))
-    lm_opt.channel_log = open('channel_log.txt', 'w')
+    if lm_opt.channel_log_file != "":
+        lm_opt.channel_log = open(
+            os.path.join(lm_opt.output_dir, lm_opt.channel_log_file), 'w')
     main(lm_opt)
     logger.info('Total time: {}s'.format(time.time() - global_time))
