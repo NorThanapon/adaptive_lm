@@ -49,11 +49,13 @@ def get_optimizer(lr_var, optim):
         optimizer = tf.train.GradientDescentOptimizer(lr_var)
     return optimizer
 
-def train_op(model, opt):
+def train_op(model, opt, loss=None):
+    if loss is None:
+        loss = model.loss
     lr = tf.Variable(opt.learning_rate, trainable=False)
     global_step = tf.contrib.framework.get_or_create_global_step()
     optimizer = get_optimizer(lr, opt.optim)
-    loss = model.loss * opt.batch_size
+    loss = loss * opt.batch_size
     g_v_pairs = optimizer.compute_gradients(loss)
     grads, tvars = [], []
     for g,v in g_v_pairs:
@@ -319,8 +321,22 @@ class MaxoutLogitsLM(LM):
         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits=max_logits, labels=targets)
         flat_w = tf.reshape(w, [-1])
+        num_w = (tf.reduce_sum(flat_w) + 1e-12)
         sum_loss = tf.reduce_sum(loss * flat_w)
-        mean_loss = sum_loss / (tf.reduce_sum(flat_w) + 1e-12)
+        mean_loss = sum_loss / num_w
+        self._sum_prob_loss(opt, logits, flat_w, num_w, targets)
+        self._sum_logit_loss(opt, channel_logits, flat_w, num_w, targets)
+        return mean_loss, loss, max_logits
+
+    def _sum_logit_loss(self, opt, channel_logits, flat_w, num_w, targets):
+        sum_logits = tf.reduce_sum(channel_logits, axis=2)
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=sum_logits, labels=targets)
+        sum_loss = tf.reduce_sum(loss * flat_w)
+        mean_loss = sum_loss / num_w
+        self.sum_logit_loss = mean_loss
+
+    def _sum_prob_loss(self, opt, logits, flat_w, num_w, targets):
         probs = tf.nn.softmax(logits)
         self.channel_probs = tf.reshape(
             probs,
@@ -329,9 +345,9 @@ class MaxoutLogitsLM(LM):
         mloss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits=sum_logits, labels=targets)
         sum_mloss = tf.reduce_sum(mloss * flat_w)
-        mean_mloss = sum_mloss / (tf.reduce_sum(flat_w) + 1e-12)
+        mean_mloss = sum_mloss / num_w
         self.merged_loss = mean_mloss
-        return mean_loss, loss, max_logits
+
 
 
 # class MaxoutLogitsLM(MaxTargetLossLM):

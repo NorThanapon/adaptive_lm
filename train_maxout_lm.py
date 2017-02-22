@@ -31,7 +31,7 @@ def run_train_epoch(sess, m, data_iter, opt, mapper,
         m.opt.batch_size, m.opt.num_steps)):
         sparse_mask_indices = mapper.create_sparse_indices(y)
         feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len}
-        fetches = [m.loss, train_op]
+        fetches = [m.sum_logit_loss, train_op]
         f_state_start = len(fetches)
         if opt.sen_independent and data_iter.is_new_sen():
             state = []
@@ -61,6 +61,7 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
     start_time = time.time()
     costs = 0.0
     costs2 = 0.0
+    costs3 = 0.0
     num_words = 0
     state = []
     for c, h in m.initial_state:
@@ -69,7 +70,7 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
         m.opt.batch_size, m.opt.num_steps)):
         sparse_mask_indices = mapper.create_sparse_indices(y)
         feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len}
-        fetches = [m.loss, m.merged_loss]
+        fetches = [m.loss, m.merged_loss, m.sum_logit_loss]
         f_state_start = len(fetches)
         if opt.sen_independent and data_iter.is_new_sen():
             state = []
@@ -83,13 +84,15 @@ def run_test_epoch(sess, m, data_iter, opt, mapper):
         res = sess.run(fetches, feed_dict)
         cost = res[0]
         cost2 = res[1]
+        cost3 = res[2]
         state_flat = res[f_state_start:]
         state = [state_flat[i:i+2] for i in range(0, len(state_flat), 2)]
         b_num_words = np.sum(w)
         num_words += b_num_words
         costs += cost * b_num_words
         costs2 += cost2 * b_num_words
-    return np.exp(costs2 / num_words), np.exp(costs / num_words), step
+        costs3 += cost3 * b_num_words
+    return np.exp(costs2 / num_words), np.exp(costs / num_words), np.exp(costs3 / num_words), step
 
 def main(lm_opt):
     model_prefix = ['latest_lm']
@@ -107,16 +110,17 @@ def main(lm_opt):
         initializer = tf.random_uniform_initializer(-init_scale, init_scale)
         with tf.variable_scope('LM', reuse=None, initializer=initializer):
             lm_train = lm.MaxoutLogitsLM(lm_opt)
-            lm_train_op, lm_lr_var = lm.train_op(lm_train, lm_opt)
+            lm_train_op, lm_lr_var = lm.train_op(lm_train, lm_opt,
+                                                 loss=lm_train.sum_logit_loss)
         with tf.variable_scope('LM', reuse=True, initializer=initializer):
             lm_valid = lm.MaxoutLogitsLM(lm_opt, is_training=False)
-        softmax_w_vars = [v for v in tf.trainable_variables() if v.name == "LM/softmax_w_0:0"][0]
-        softmax_w = np.random.uniform(-init_scale, init_scale,
-                                      softmax_w_vars.get_shape())
-        odd = range(1, len(softmax_w), 2)
-        even = range(0, len(softmax_w), 2)
-        softmax_w[odd] = softmax_w[even]
-        tf.assign(softmax_w_vars, softmax_w)
+        # softmax_w_vars = [v for v in tf.trainable_variables() if v.name == "LM/softmax_w_0:0"][0]
+        # softmax_w = np.random.uniform(-init_scale, init_scale,
+        #                               softmax_w_vars.get_shape())
+        # odd = range(1, len(softmax_w), 2)
+        # even = range(0, len(softmax_w), 2)
+        # softmax_w[odd] = softmax_w[even]
+        # tf.assign(softmax_w_vars, softmax_w)
         logger.debug('Trainable variables:')
         for v in tf.trainable_variables():
             logger.debug("- {} {} {}".format(v.name, v.get_shape(), v.device))
@@ -143,9 +147,9 @@ def main(lm_opt):
             lm_train_ppl, _ = run_train_epoch(sess, lm_train, lm_data['train'],
                                               lm_opt, mapper, lm_train_op)
             logger.info('- Validating LM...')
-            lm_valid_ppl, p, _ = run_test_epoch(sess, lm_valid, lm_data['valid'],
+            lm_valid_ppl, p, p2, _ = run_test_epoch(sess, lm_valid, lm_data['valid'],
                                              lm_opt, mapper)
-            logger.debug('{} vs {}'.format(p, lm_valid_ppl))
+            logger.debug('{} vs {} vs {}'.format(lm_valid_ppl, p, p2))
             logger.info('----------------------------------')
             logger.info('LM post epoch routine...')
             done_training = run_post_epoch(
