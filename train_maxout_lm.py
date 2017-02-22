@@ -101,6 +101,7 @@ def main(lm_opt):
     lm_opt.vocab_segments = mapper.segments
     lm_opt.num_channels = mapper.max_num_values
     init_scale = lm_opt.init_scale
+
     sess_config = common_utils.get_tf_sess_config(lm_opt)
     with tf.Session(config=sess_config) as sess:
         initializer = tf.random_uniform_initializer(-init_scale, init_scale)
@@ -109,6 +110,13 @@ def main(lm_opt):
             lm_train_op, lm_lr_var = lm.train_op(lm_train, lm_opt)
         with tf.variable_scope('LM', reuse=True, initializer=initializer):
             lm_valid = lm.MaxoutLogitsLM(lm_opt, is_training=False)
+        softmax_w_vars = [v for v in tf.trainable_variables() if v.name == "LM/softmax_w_0:0"][0]
+        softmax_w = np.random.uniform(-init_scale, init_scale,
+                                      softmax_w_vars.get_shape())
+        odd = range(1, len(softmax_w), 2)
+        even = range(0, len(softmax_w), 2)
+        softmax_w[odd] = softmax_w[even]
+        tf.assign(softmax_w_vars, softmax_w)
         logger.debug('Trainable variables:')
         for v in tf.trainable_variables():
             logger.debug("- {} {} {}".format(v.name, v.get_shape(), v.device))
@@ -153,7 +161,7 @@ if __name__ == "__main__":
     global_time = time.time()
     parser = common_utils.get_common_argparse()
     parser.add_argument('--map_filepath', type=str,
-                        default='experiments/multi-softmax/ptb/1to2.map.txt')
+                        default='experiments/multi-softmax/ptb/1to2.all.map.txt')
     args = parser.parse_args()
     lm_opt = common_utils.Bunch.default_model_options()
     lm_opt.update_from_ns(args)
