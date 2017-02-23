@@ -32,6 +32,8 @@ def run_train_epoch(sess, m, data_iter, opt, mapper,
         sparse_mask_indices = mapper.create_sparse_indices(y)
         feed_dict = {m.x: x, m.y: y, m.w: w, m.seq_len: seq_len}
         fetches = [m.sum_logit_loss, train_op]
+        # fetches = [m.loss, train_op]
+
         f_state_start = len(fetches)
         if opt.sen_independent and data_iter.is_new_sen():
             state = []
