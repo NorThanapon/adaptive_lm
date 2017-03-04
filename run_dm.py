@@ -34,7 +34,7 @@ if __name__ == '__main__':
                         help='embedding cpickled file in data_dir')
     parser.add_argument('--tie_input_enc_emb', dest='tie_input_enc_emb',
                         action='store_true')
-    parser.set_defaults(data_dir='data/common_defs_v1.2/wordnet/preprocess/',
+    parser.set_defaults(data_dir='data/wordnet_single/preprocess/',
                         state_size=300,
                         emb_size=300,
                         num_layers=2,
