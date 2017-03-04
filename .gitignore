@@ -5,6 +5,7 @@
 /data/ptb-100
 /data/wikitext-103
 /data/wikitext-2
+/data/wordnet_single
 .ipynb_checkpoints/
 *.pyc
 .remote-sync.json

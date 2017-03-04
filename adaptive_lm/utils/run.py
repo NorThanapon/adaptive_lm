@@ -101,10 +101,13 @@ def update_lr(opt, state):
     return False
 
 def feed_state(feed_dict, state_vars, state_vals):
-    for i, (c, h) in enumerate(state_vars):
-        feed_dict[c] = state_vals[i].c
-        feed_dict[h] = state_vals[i].h
+    feed_dict[state_vars] = state_vals
     return feed_dict
+    # Turn out that we do not need this anymore.
+    # for i, (c, h) in enumerate(state_vars):
+    #     feed_dict[c] = state_vals[i].c
+    #     feed_dict[h] = state_vals[i].h
+    # return feed_dict
 
 def map_feeddict(batch, model_feed):
     feed_dict = {}
@@ -213,13 +216,16 @@ def create_model(opt, exp_opt):
         '- Creating initializer ({} to {})'.format(-init_scale, init_scale))
     initializer = tf.random_uniform_initializer(-init_scale, init_scale)
     logger.debug('- Creating training model...')
-    with tf.variable_scope(exp_opt.model_scope, reuse=None, initializer=initializer):
-        train_model = exp_opt.build_train_fn(exp_opt.model_cls(
-            opt, helper=exp_opt.model_helper_cls(opt)))
-        optim_op, lr_var = train_op(
-            train_model.losses.loss, opt)
-    logger.debug('- Creating testing model (reuse params)...')
-    with tf.variable_scope(exp_opt.model_scope, reuse=True, initializer=initializer):
+    train_model, optim_op, lr_var = None, None, None
+    if exp_opt.training:
+        with tf.variable_scope(exp_opt.model_scope, reuse=None, initializer=initializer):
+            train_model = exp_opt.build_train_fn(exp_opt.model_cls(
+                opt, helper=exp_opt.model_helper_cls(opt)))
+            optim_op, lr_var = train_op(
+                train_model.losses.loss, opt)
+    logger.debug('- Creating testing model...')
+    with tf.variable_scope(exp_opt.model_scope, reuse=exp_opt.training,
+                           initializer=initializer):
         test_opt = LazyBunch(opt, keep_prob=1.0, emb_keep_prob=1.0)
         test_model = exp_opt.build_test_fn(exp_opt.model_cls(
             test_opt, helper=exp_opt.model_helper_cls(test_opt)))

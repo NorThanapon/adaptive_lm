@@ -44,13 +44,13 @@ for s in splits:
     with open(f) as ifp, open(pf, 'w') as pfp:
         for line in ifp:
             parts = line.lower().strip().split('\t')
-            def_tokens = nltk.word_tokenize(parts[3])
+            def_tokens = nltk.word_tokenize(parts[-1])
             if len(def_tokens) > args.max_def_len:
                 continue
-            parts[3] = ' '.join(def_tokens)
+            parts[-1] = ' '.join(def_tokens)
             data = {'meta':{'word':parts[0], 'pos':parts[1], 'src':parts[2] },
                     'key': parts[0],
-                    'lines':[' '.join([parts[0], def_symbol, parts[3]])]}
+                    'lines':[' '.join([parts[0], def_symbol, parts[-1]])]}
             # w_count[sos_symbol] += 1
             w_count[eos_symbol] += 1
             # w_low_count[sos_symbol] += 1
