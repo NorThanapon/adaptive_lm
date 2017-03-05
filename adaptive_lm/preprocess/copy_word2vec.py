@@ -19,11 +19,15 @@ with open(vocab_path) as ifp:
 print('- Vocab size: {}'.format(len(words)))
 print('- Copying word2vec...')
 vocab2vec = np.random.uniform(low=-1.0, high=1.0,
-                              size=(len(words), w2v.vector_size))
+                              size=(len(words), w2v['test'].shape[0]))
 vocab2vec = vocab2vec / np.linalg.norm(vocab2vec, ord=2, axis=0)
+unk = 0
 for i, word in enumerate(words):
     if word in w2v:
         vocab2vec[i] = w2v[word]
+    else:
+        unk += 1
+print('- Unknown words: {}'.format(unk))
 print('- Writing output...')
 with open(out_path, 'w') as ofp:
     cPickle.dump(obj=vocab2vec, file=ofp)
