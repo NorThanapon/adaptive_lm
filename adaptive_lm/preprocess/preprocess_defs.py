@@ -12,16 +12,29 @@ def_symbol = '<def>'
 parser = argparse.ArgumentParser()
 parser.add_argument("text_dir",
                     help="Definition directory.")
+
+parser.add_argument("--restrict_vocab", help="restrict vocab file path",
+                    default=None)
+parser.add_argument("--source_index", help="restrict vocab file path",
+                    default=2, type=int)
 parser.add_argument("--stopword_file", help="stopword file path",
                     default='stopwords.txt')
 parser.add_argument("--bow_vocab_size", help="Number of vocab in BOW features",
                     default=100)
 parser.add_argument("--max_def_len", help="remove definitions that is longer than this number.",
                     default=100)
+
 parser.add_argument('--only_train', dest='only_train', action='store_true')
 parser.set_defaults(only_train=False)
 
 args = parser.parse_args()
+
+limit_vocab = None
+if args.restrict_vocab is not None:
+    limit_vocab = set()
+    with open(args.restrict_vocab) as ifp:
+        for line in ifp:
+            limit_vocab.add(line.strip())
 
 splits = ('train', 'valid', 'test')
 if args.only_train:
@@ -45,10 +58,17 @@ for s in splits:
         for line in ifp:
             parts = line.lower().strip().split('\t')
             def_tokens = nltk.word_tokenize(parts[-1])
+            if limit_vocab is not None:
+                if parts[0] not in limit_vocab: # ignore word not in vocab
+                    continue
+                for i in range(len(def_tokens)):
+                    if def_tokens[i] not in limit_vocab:
+                        def_tokens[i] = unk_symbol # replace with unk token
             if len(def_tokens) > args.max_def_len:
                 continue
             parts[-1] = ' '.join(def_tokens)
-            data = {'meta':{'word':parts[0], 'pos':parts[1], 'src':parts[2] },
+            data = {'meta':{'word':parts[0], 'pos':parts[1],
+                            'src':parts[args.source_index] },
                     'key': parts[0],
                     'lines':[' '.join([parts[0], def_symbol, parts[-1]])]}
             # w_count[sos_symbol] += 1

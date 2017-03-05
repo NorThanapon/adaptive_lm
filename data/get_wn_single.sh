@@ -16,4 +16,4 @@ done
 mv "tmp.txt" "shortlist/shortlist_all.txt"
 cd ../
 echo "[2/2] Preprocessing..."
-python ../adaptive_lm/preprocess/preprocess_defs.py wordnet_single
+python ../adaptive_lm/preprocess/preprocess_defs.py wordnet_single --source_index 3

@@ -1,14 +1,16 @@
 import sys
 import cPickle
 import numpy as np
-from gensim.models.word2vec import Word2Vec
+from gensim.models import KeyedVectors
 
 w2v_path = sys.argv[1]
+binary = True
 vocab_path = sys.argv[2]
 out_path = sys.argv[3]
 
+
 print('- Loading word2vec...')
-w2v = Word2Vec.load_word2vec_format(w2v_path, binary=True)
+w2v = KeyedVectors.load_word2vec_format(w2v_path, binary=binary)
 words = []
 print('- Reading vocab...')
 with open(vocab_path) as ifp:
