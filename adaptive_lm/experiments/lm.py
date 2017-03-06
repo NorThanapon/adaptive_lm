@@ -57,8 +57,10 @@ def _initialize_variables(sess, exp_opt, logger):
             sess.run(tf.assign(v, value))
 
 def run(opt, exp_opt, logger):
+    data_kwargs = exp_opt.get('data_kwargs', {})
     dataset, vocab = load_datasets(opt, dataset=exp_opt.splits,
-                                   iterator_type=exp_opt.iterator_cls)
+                                   iterator_type=exp_opt.iterator_cls,
+                                   **data_kwargs)
     opt.vocab_size = vocab.vocab_size
     init_scale = opt.init_scale
     logger.debug('Staring session...')

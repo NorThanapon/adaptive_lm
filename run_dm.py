@@ -10,6 +10,7 @@ from adaptive_lm.models.basic_rnnlm import DecoderRNNLM
 from adaptive_lm.utils import common as common_utils
 from adaptive_lm.experiments import lm
 from adaptive_lm.utils.data import SenLabelIterator
+from adaptive_lm.utils.data import Vocabulary
 
 training_exp_opt = common_utils.LazyBunch(
     resume = 'latest_lm',
@@ -24,6 +25,7 @@ training_exp_opt = common_utils.LazyBunch(
     build_test_fn = DecoderRNNLM.build_full_model_graph,
     init_variables = [],
     training = True,
+    data_kwargs = common_utils.LazyBunch()
 )
 
 if __name__ == '__main__':
@@ -31,6 +33,9 @@ if __name__ == '__main__':
     parser = common_utils.get_common_argparse()
     parser.add_argument('--emb_pickle_file', type=str,
                         default='emb.cpickle',
+                        help='embedding cpickled file in data_dir')
+    parser.add_argument('--output_vocab_file', type=str,
+                        default='vocab_def.txt',
                         help='embedding cpickled file in data_dir')
     parser.add_argument('--tie_input_enc_emb', dest='tie_input_enc_emb',
                         action='store_true')
@@ -59,6 +64,11 @@ if __name__ == '__main__':
         emb_values = cPickle.load(ifp)
         training_exp_opt.init_variables.append(
             ('{}/.*{}'.format('DM', 'emb'), emb_values))
+    logger.info('Loading output vocab...')
+    out_vocab = Vocabulary.from_vocab_file(
+        os.path.join(opt.data_dir, opt.output_vocab_file))
+    training_exp_opt.data_kwargs.y_vocab = out_vocab
+    opt.output_vocab_size = out_vocab.vocab_size
     info = lm.run(opt, training_exp_opt, logger)
     logger.info('Perplexity: {}, Num tokens: {}'.format(
         np.exp(info.cost / info.num_words), info.num_words))

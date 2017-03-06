@@ -49,6 +49,7 @@ w_count = {
     unk_symbol:0,
     def_symbol:0,
 }
+w_def_count = w_count.copy()
 w_low_count = w_count.copy()
 args.max_def_len = int(args.max_def_len)
 for s in splits:
@@ -66,6 +67,8 @@ for s in splits:
                         def_tokens[i] = unk_symbol # replace with unk token
             if len(def_tokens) > args.max_def_len:
                 continue
+            for t in def_tokens:
+                w_def_count[t] = w_def_count.get(t, 0) + 1
             parts[-1] = ' '.join(def_tokens)
             data = {'meta':{'word':parts[0], 'pos':parts[1],
                             'src':parts[args.source_index] },
@@ -75,6 +78,8 @@ for s in splits:
             w_count[eos_symbol] += 1
             # w_low_count[sos_symbol] += 1
             w_low_count[eos_symbol] += 1
+            w_def_count[def_symbol] += 1
+            w_def_count[eos_symbol] += 1
             for token in data['lines'][0].split():
                 w_count[token] = w_count.get(token, 0) + 1
                 l_token = token.lower()
@@ -88,9 +93,16 @@ for ofp in ofps:
     ofps[ofp].close()
 
 w_count = sorted(w_count.items(), key=operator.itemgetter(1), reverse=True)
+
 vocab_filepath = os.path.join(args.text_dir, 'preprocess/vocab.txt')
 with open(vocab_filepath, 'w') as ofp:
     for w in w_count:
+        ofp.write('{}\t{}\n'.format(w[0], w[1]))
+
+w_def_count = sorted(w_def_count.items(), key=operator.itemgetter(1), reverse=True)
+vocab_filepath = os.path.join(args.text_dir, 'preprocess/vocab_def.txt')
+with open(vocab_filepath, 'w') as ofp:
+    for w in w_def_count:
         ofp.write('{}\t{}\n'.format(w[0], w[1]))
 
 w_low_count = sorted(w_low_count.items(), key=operator.itemgetter(1), reverse=True)
