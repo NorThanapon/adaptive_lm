@@ -9,6 +9,7 @@ from adaptive_lm.models.rnnlm_helper import EmbDecoderRNNHelper
 from adaptive_lm.models.basic_rnnlm import DecoderRNNLM
 from adaptive_lm.utils import common as common_utils
 from adaptive_lm.experiments import lm
+from adaptive_lm.experiments import decode_dm
 from adaptive_lm.utils.data import SenLabelIterator
 from adaptive_lm.utils.data import Vocabulary
 
@@ -28,6 +29,10 @@ training_exp_opt = common_utils.LazyBunch(
     data_kwargs = common_utils.LazyBunch()
 )
 
+decoding_exp_opt = common_utils.LazyBunch(
+    training_exp_opt,
+    training = False)
+
 if __name__ == '__main__':
     global_time = time.time()
     parser = common_utils.get_common_argparse()
@@ -39,7 +44,20 @@ if __name__ == '__main__':
                         help='embedding cpickled file in data_dir')
     parser.add_argument('--tie_input_enc_emb', dest='tie_input_enc_emb',
                         action='store_true')
-    parser.set_defaults(data_dir='data/wordnet_single/preprocess/',
+    parser.add_argument('--decoding', dest='decoding',
+                        action='store_true')
+    parser.add_argument('--sampling', dest='sampling',
+                        action='store_true')
+    parser.add_argument('--num_samples', type=int, default=1,
+                        help='number of samples for each word')
+    parser.add_argument('--logit_temperature', type=float, default=1.0,
+                        help='temperature for output logit')
+    parser.add_argument('--max_len', type=int, default=30,
+                        help='maximum length of decoding sequences')
+    parser.add_argument('--target_word_path', type=str,
+                        default='data/wordnet_all/shortlist/shortlist_valid.txt',
+                        help='a path to a file containing list of words')
+    parser.set_defaults(data_dir='data/wordnet_all/preprocess/',
                         state_size=300,
                         emb_size=300,
                         num_layers=2,
@@ -58,18 +76,27 @@ if __name__ == '__main__':
     else:
         logger.setLevel(logging.INFO)
     logger.info('Configurations:\n{}'.format(opt.toPretty()))
-    emb_path = os.path.join(opt.data_dir, opt.emb_pickle_file)
-    logger.info('Loading embeddings from {}'.format(emb_path))
-    with open(emb_path) as ifp:
-        emb_values = cPickle.load(ifp)
-        training_exp_opt.init_variables.append(
-            ('{}/.*{}'.format('DM', 'emb'), emb_values))
     logger.info('Loading output vocab...')
     out_vocab = Vocabulary.from_vocab_file(
         os.path.join(opt.data_dir, opt.output_vocab_file))
     training_exp_opt.data_kwargs.y_vocab = out_vocab
     opt.output_vocab_size = out_vocab.vocab_size
-    info = lm.run(opt, training_exp_opt, logger)
-    logger.info('Perplexity: {}, Num tokens: {}'.format(
-        np.exp(info.cost / info.num_words), info.num_words))
+    if opt.decoding:
+        opt.num_steps = 1
+        with open(opt.target_word_path) as ifp:
+            target_words = []
+            for line in ifp:
+                target_words.append(line.strip().split('\t')[0])
+        decoding_exp_opt.word_list = target_words
+        decode_dm.run(opt, decoding_exp_opt, logger)
+    else:
+        emb_path = os.path.join(opt.data_dir, opt.emb_pickle_file)
+        logger.info('Loading embeddings from {}'.format(emb_path))
+        with open(emb_path) as ifp:
+            emb_values = cPickle.load(ifp)
+            training_exp_opt.init_variables.append(
+                ('{}/.*{}'.format('DM', 'emb'), emb_values))
+        info = lm.run(opt, training_exp_opt, logger)
+        logger.info('Perplexity: {}, Num tokens: {}'.format(
+            np.exp(info.cost / info.num_words), info.num_words))
     logger.info('Total time: {}s'.format(time.time() - global_time))

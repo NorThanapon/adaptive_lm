@@ -53,9 +53,10 @@ class BasicRNNHelper(object):
             flat_output, _ = self._flat_rnn_outputs(rnn_outputs)
         else:
             flat_output = rnn_outputs
-        logits = self.create_output_logit(flat_output, logit_weights)
+        logits, temperature = self.create_output_logit(
+            flat_output, logit_weights)
         probs = tf.nn.softmax(logits)
-        return logits, probs
+        return logits, temperature, probs
 
     def create_output_logit(self, features, logit_weights):
         """ Create softmax graph. """
@@ -67,7 +68,10 @@ class BasicRNNHelper(object):
             softmax_w = tf.get_variable("softmax_w", [vocab_size, softmax_size])
         softmax_b = tf.get_variable("softmax_b", softmax_w.get_shape()[0])
         logits =tf.matmul(features, softmax_w, transpose_b=True) + softmax_b
-        return logits
+        temperature = tf.placeholder_with_default(1.0, shape=None,
+                                                  name="logit_temperature")
+        # if self.opt.get('output_logit_with_temperature', False):
+        return logits / temperature, temperature
 
     def create_target_placeholder(self):
         """ create target placeholders """

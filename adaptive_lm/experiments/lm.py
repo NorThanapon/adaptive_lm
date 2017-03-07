@@ -62,7 +62,6 @@ def run(opt, exp_opt, logger):
                                    iterator_type=exp_opt.iterator_cls,
                                    **data_kwargs)
     opt.vocab_size = vocab.vocab_size
-    init_scale = opt.init_scale
     logger.debug('Staring session...')
     sess_config = common_utils.get_tf_sess_config(opt)
     with tf.Session(config=sess_config) as sess:

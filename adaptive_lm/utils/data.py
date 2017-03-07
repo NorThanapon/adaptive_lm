@@ -308,6 +308,14 @@ class DataIterator(object):
                 break
             yield batch
 
+    @staticmethod
+    def get_empty_batch(batch_size, num_steps):
+        return LazyBunch(inputs=np.zeros([batch_size, num_steps], np.int32),
+                         targets=np.zeros([batch_size, num_steps], np.int32),
+                         weights=np.zeros([batch_size, num_steps], np.int32),
+                         lengths=np.zeros([batch_size], np.int32),
+                         total=0)
+
 ######################################################
 # Setnence Iterator
 ######################################################
@@ -461,6 +469,12 @@ class SenLabelIterator(SentenceIterator):
     def format_batch(self):
         batch = super(SenLabelIterator, self).format_batch()
         batch.enc_inputs = self._l_arr
+        return batch
+
+    @staticmethod
+    def get_empty_batch(batch_size, num_steps):
+        batch = DataIterator.get_empty_batch(batch_size, num_steps)
+        batch.enc_inputs = np.zeros([batch_size, num_steps], np.int32)
         return batch
 
 ######################################################

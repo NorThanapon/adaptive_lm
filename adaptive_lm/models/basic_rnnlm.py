@@ -44,7 +44,7 @@ class BasicRNNLM(rnnlm.RNNLM):
         self._rnn_output, self._final_state = self.helper.unroll_rnn_cell(
             self._input_emb, self._seq_len,
             self._cell, self._initial_state)
-        self._logit, self._prob = self.helper.create_output(
+        self._logit, self._temperature, self._prob = self.helper.create_output(
             self._rnn_output, self._emb)
         self._prob = self._reshape_batch_time(self._prob)
         outputs = LazyBunch(rnn_outputs=self._rnn_output,
@@ -79,7 +79,7 @@ class BasicRNNLM(rnnlm.RNNLM):
         return LazyBunch(
             inputs=inputs, init_state=init_state, outputs=outputs,
             final_state=final_state, targets=targets, losses=losses,
-            feed=feed, fetch=fetch)
+            temperature=m._temperature, feed=feed, fetch=fetch)
 
     def _reshape_batch_time(self, node, squeeze=False):
         shape = [self._opt.batch_size, self._opt.num_steps, -1]
@@ -132,7 +132,7 @@ class DecoderRNNLM(BasicRNNLM):
             self._enc_input, self._emb)
         mixed_output, _ = self.helper.create_enc_dec_mixer(
             self._enc_output, self._rnn_output)
-        self._logit, self._prob = self.helper.create_output(
+        self._logit, self._temperature, self._prob = self.helper.create_output(
             mixed_output, self._emb)
         self._prob = self._reshape_batch_time(self._prob)
         outputs = LazyBunch(rnn_outputs=self._rnn_output,
