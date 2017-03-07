@@ -30,17 +30,16 @@ class BasicRNNHelper(object):
         if self.opt.emb_keep_prob < 1.0:
             input_emb_var = tf.nn.dropout(input_emb_var, self.opt.emb_keep_prob)
         steps = int(input_emb_var.get_shape()[1])
-        input_emb_var = [tf.squeeze(_x, [1])
-                         for _x in tf.split(input_emb_var, steps, 1)]
         return emb_var, input_emb_var
 
-    def unroll_rnn_cell(self, inputs, seq_len, cell, initial_state):
+    def unroll_rnn_cell(self, inputs, seq_len, cell, initial_state, scope=None):
         """ Unroll RNNCell. """
         seq_len = None
         if self.opt.varied_len:
             seq_len = seq_len
-        rnn_outputs, final_state = tf.contrib.rnn.static_rnn(
-            cell, inputs, initial_state=initial_state, sequence_length=seq_len)
+        rnn_outputs, final_state = tf.nn.dynamic_rnn(
+            cell, inputs, initial_state=initial_state, sequence_length=seq_len,
+            scope=scope)
         return rnn_outputs, final_state
 
     def _flat_rnn_outputs(self, rnn_outputs):
@@ -49,14 +48,23 @@ class BasicRNNHelper(object):
                           [-1, state_size]), state_size
 
     def create_output(self, rnn_outputs, logit_weights=None):
-        if isinstance(rnn_outputs, list):
-            flat_output, _ = self._flat_rnn_outputs(rnn_outputs)
-        else:
-            flat_output = rnn_outputs
         logits, temperature = self.create_output_logit(
-            flat_output, logit_weights)
+            rnn_outputs, logit_weights)
         probs = tf.nn.softmax(logits)
         return logits, temperature, probs
+
+    def fancy_matmul(self, mat3d, mat2d, transpose_2d=False):
+        mat3d_dim = int(mat3d.get_shape()[-1])
+        if transpose_2d:
+            mat2d_dim = int(mat2d.get_shape()[0])
+        else:
+            mat2d_dim = int(mat2d.get_shape()[-1])
+        output_shapes = tf.unstack(tf.shape(mat3d))
+        output_shapes[-1] = mat2d_dim
+        output_shape = tf.stack(output_shapes)
+        flat_mat3d = tf.reshape(mat3d, [-1, mat3d_dim])
+        outputs = tf.matmul(flat_mat3d, mat2d, transpose_b=transpose_2d)
+        return tf.reshape(outputs, output_shape)
 
     def create_output_logit(self, features, logit_weights):
         """ Create softmax graph. """
@@ -67,10 +75,9 @@ class BasicRNNHelper(object):
             vocab_size = self.opt.get('output_vocab_size' ,self.opt.vocab_size)
             softmax_w = tf.get_variable("softmax_w", [vocab_size, softmax_size])
         softmax_b = tf.get_variable("softmax_b", softmax_w.get_shape()[0])
-        logits =tf.matmul(features, softmax_w, transpose_b=True) + softmax_b
+        logits = self.fancy_matmul(features, softmax_w, True) + softmax_b
         temperature = tf.placeholder_with_default(1.0, shape=None,
                                                   name="logit_temperature")
-        # if self.opt.get('output_logit_with_temperature', False):
         return logits / temperature, temperature
 
     def create_target_placeholder(self):
@@ -115,9 +122,9 @@ class EmbDecoderRNNHelper(BasicRNNHelper):
         encoder = tf.nn.embedding_lookup(enc_emb, enc_inputs)
         if self.opt.emb_keep_prob < 1.0:
             encoder = tf.nn.dropout(encoder, self.opt.emb_keep_prob)
-        steps = int(encoder.get_shape()[1])
+        # steps = int(encoder.get_shape()[1])
         # rearrange to fix rnn output
-        encoder = [tf.squeeze(_x, [1]) for _x in tf.split(encoder, steps, 1)]
+        # encoder = [tf.squeeze(_x, [1]) for _x in tf.split(encoder, steps, 1)]
         return encoder
 
     def create_enc_dec_mixer(self, enc_outputs, dec_outputs):
@@ -130,22 +137,22 @@ class EmbDecoderRNNHelper(BasicRNNHelper):
             Returns:
                 (feature tensor(batch*steps, hidden), hidden size)
         """
-        flat_enc, enc_size = self._flat_rnn_outputs(enc_outputs)
-        flat_dec, dec_size = self._flat_rnn_outputs(dec_outputs)
-        enc_dec = tf.concat([flat_enc, flat_dec], 1)
+        enc_size = int(enc_outputs.get_shape()[-1])
+        dec_size = int(dec_outputs.get_shape()[-1])
         full_size = enc_size + dec_size
+        enc_dec = tf.concat([enc_outputs, dec_outputs], -1)
         zr_w = tf.get_variable("att_zr_w", [full_size, full_size])
         zr_b = tf.get_variable("att_zr_b", [full_size])
-        zr = tf.sigmoid(tf.matmul(enc_dec, zr_w) + zr_b)
-        z = tf.slice(zr, [0, 0], [-1, dec_size],
+        zr = tf.sigmoid(self.fancy_matmul(enc_dec, zr_w) + zr_b)
+        z = tf.slice(zr, [0, 0, 0], [-1, -1, dec_size],
                      name="att_z_gate")
-        r = tf.slice(zr, [0, dec_size], [-1, -1],
+        r = tf.slice(zr, [0, 0, dec_size], [-1, -1, -1],
                      name="att_r_gate")
-        att_flat_enc = tf.multiply(flat_enc, r)
-        att_enc_dec = tf.concat([att_flat_enc, flat_dec], 1)
+        att_enc = tf.multiply(enc_outputs, r)
+        att_enc_dec = tf.concat([att_enc, dec_outputs], -1)
         h_w = tf.get_variable("att_h_w",
                               [full_size, dec_size])
         h_b = tf.get_variable("att_h_b", [dec_size])
-        h = tf.tanh(tf.matmul(att_enc_dec, h_w) + h_b)
-        outputs = tf.multiply((1-z), flat_dec) + tf.multiply(z, h)
+        h = tf.tanh(self.fancy_matmul(att_enc_dec, h_w) + h_b)
+        outputs = tf.multiply((1-z), dec_outputs) + tf.multiply(z, h)
         return outputs, dec_size

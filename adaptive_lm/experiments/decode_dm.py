@@ -33,7 +33,8 @@ def run(opt, exp_opt, logger):
         decoder = decode_utils.Emb2SeqDecoder(
             sess, test_model, in_vocab, out_vocab, opt)
         defs, s = decoder.decode(batch, exp_opt.word_list)
-    with codecs.open('tmp.txt', 'w', 'utf-8') as ofp:
+    output_path = os.path.join(opt.experiment_dir, opt.output_file)
+    with codecs.open(output_path, 'w', 'utf-8') as ofp:
         for i, d in enumerate(defs):
             if "</s>" in d:
                 eos_idx = d.index("</s>") - 1

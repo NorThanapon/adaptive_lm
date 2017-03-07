@@ -57,6 +57,9 @@ if __name__ == '__main__':
     parser.add_argument('--target_word_path', type=str,
                         default='data/wordnet_all/shortlist/shortlist_valid.txt',
                         help='a path to a file containing list of words')
+    parser.add_argument('--output_file', type=str,
+                        default='generated.txt',
+                        help='output file name')
     parser.set_defaults(data_dir='data/wordnet_all/preprocess/',
                         state_size=300,
                         emb_size=300,

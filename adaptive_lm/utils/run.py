@@ -101,8 +101,13 @@ def update_lr(opt, state):
     return False
 
 def feed_state(feed_dict, state_vars, state_vals):
-    feed_dict[state_vars] = state_vals
-    return feed_dict
+    if isinstance(state_vars, dict):
+        for k in state_vars:
+            feed_state(feed_dict, state_vars[k], state_vals[k])
+        return feed_dict
+    else:
+        feed_dict[state_vars] = state_vals
+        return feed_dict
     # Turn out that we do not need this anymore.
     # for i, (c, h) in enumerate(state_vars):
     #     feed_dict[c] = state_vals[i].c
