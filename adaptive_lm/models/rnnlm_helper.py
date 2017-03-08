@@ -38,14 +38,14 @@ class BasicRNNHelper(object):
         if self.opt.varied_len:
             seq_len = seq_len
         steps = int(inputs.get_shape()[1])
-        # inputs = [tf.squeeze(_x, [1]) for _x in tf.split(inputs, steps, 1)]
-        # rnn_outputs, final_state = tf.contrib.rnn.static_rnn(
-        #     cell, inputs, initial_state=initial_state, sequence_length=seq_len,
-        #     scope=scope)
-        # rnn_outputs = tf.stack([tf.reshape(_o, [self.opt.batch_size, 1, -1]) for _o in rnn_outputs], axis=1)
-        rnn_outputs, final_state = tf.nn.dynamic_rnn(
+        inputs = [tf.squeeze(_x, [1]) for _x in tf.split(inputs, steps, 1)]
+        rnn_outputs, final_state = tf.contrib.rnn.static_rnn(
             cell, inputs, initial_state=initial_state, sequence_length=seq_len,
             scope=scope)
+        rnn_outputs = tf.stack([tf.reshape(_o, [self.opt.batch_size, 1, -1]) for _o in rnn_outputs], axis=1)
+        # rnn_outputs, final_state = tf.nn.dynamic_rnn(
+        #     cell, inputs, initial_state=initial_state, sequence_length=seq_len,
+        #     scope=scope)
         return rnn_outputs, final_state
 
     def _flat_rnn_outputs(self, rnn_outputs):
