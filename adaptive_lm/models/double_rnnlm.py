@@ -42,7 +42,11 @@ class DoubleRNNLM(BasicRNNLM):
                                      gate_w) + gate_b
         t = tf.sigmoid(tf.slice(z, [0,0,0], [-1, -1, carried_dim]))
         h = tf.tanh(tf.slice(z, [0,0, carried_dim], [-1, -1, -1]))
-        return tf.multiply(h, t) + tf.multiply(carried, (1-t))
+        self._transform_gate = t
+        o = tf.multiply(h, t) + tf.multiply(carried, (1-t))
+        if self._opt.keep_prob < 1.0:
+            o = tf.nn.dropout(o, self._opt.keep_prob)
+        return o
 
 
     def forward(self):
