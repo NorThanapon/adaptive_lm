@@ -48,6 +48,21 @@ class DoubleRNNLM(BasicRNNLM):
             o = tf.nn.dropout(o, self._opt.keep_prob)
         return o
 
+    def _attention_update(self, carried, extra):
+        carried_dim = int(carried.get_shape()[-1])
+        extra_dim = int(extra.get_shape()[-1])
+        full_size = carried_dim + extra_dim
+        gate_w = tf.get_variable("gate_w", [full_size, 1])
+        gate_b = tf.get_variable("gate_b", [1])
+        att = tf.sigmoid(
+            self.helper.fancy_matmul(
+                tf.concat([carried, extra], -1), gate_w) + gate_b)
+        self._att = att
+        o = att * carried + (1 - att) * extra
+        if self._opt.keep_prob < 1.0:
+            o = tf.nn.dropout(o, self._opt.keep_prob)
+        return o
+
 
     def forward(self):
         self._rnn_output, self._final_state = self.helper.unroll_rnn_cell(
@@ -56,8 +71,8 @@ class DoubleRNNLM(BasicRNNLM):
         self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
             self._rnn_output, self._seq_len,
             self._cell_top, self._initial_state_top, scope="rnn_top")
-        self._mixed_output = self._gated_update(self._rnn_output,
-                                                self._rnn_top_output)
+        self._mixed_output = self._attention_update(self._rnn_output,
+                                                    self._rnn_top_output)
         self._logit, self._temperature, self._prob = self.helper.create_output(
             self._mixed_output, self._emb)
         self._final_states = LazyBunch(word_state=self._final_state,
