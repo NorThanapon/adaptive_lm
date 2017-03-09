@@ -22,6 +22,9 @@ class RNNLMTest(unittest.TestCase):
     def test_smoke_basic_rnn(self):
         tf.reset_default_graph()
         opt = BasicRNNLM.default_model_options()
+        opt.num_layers = 2
+        opt.emb_size = 300
+        opt.state_size = 320
         m = BasicRNNLM(opt)
         inputs, init_state = m.initialize()
         self.assertPlaceholderSize(opt, inputs.inputs)
@@ -35,6 +38,14 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertPlaceholderSize(opt, losses.token_loss)
         self.assertEqual(losses.loss.get_shape(), ())
+        # total_parameters = 0
+        # for variable in tf.trainable_variables():
+        #     shape = variable.get_shape()
+        #     variable_parametes = 1
+        #     for dim in shape:
+        #         variable_parametes *= dim.value
+        #     total_parameters += variable_parametes
+        # print(total_parameters)
 
     def test_smoke_decoder_rnn(self):
         tf.reset_default_graph()
@@ -57,6 +68,9 @@ class RNNLMTest(unittest.TestCase):
     def test_smoke_double_rnn(self):
         tf.reset_default_graph()
         opt = BasicRNNLM.default_model_options()
+        opt.num_layers = 1
+        opt.emb_size = 300
+        opt.state_size = 300
         m = DoubleRNNLM(opt)
         inputs, init_states = m.initialize()
         self.assertPlaceholderSize(opt, inputs.inputs)
@@ -72,6 +86,14 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertPlaceholderSize(opt, losses.token_loss)
         self.assertEqual(losses.loss.get_shape(), ())
+        # total_parameters = 0
+        # for variable in tf.trainable_variables():
+        #     shape = variable.get_shape()
+        #     variable_parametes = 1
+        #     for dim in shape:
+        #         variable_parametes *= dim.value
+        #     total_parameters += variable_parametes
+        # print(total_parameters)
 
 
 if __name__ == '__main__':

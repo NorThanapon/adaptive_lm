@@ -38,10 +38,11 @@ class DoubleRNNLM(BasicRNNLM):
         extra_dim = int(extra.get_shape()[-1])
         full_size = carried_dim + extra_dim
         gate_w = tf.get_variable("gate_w", [full_size, carried_dim * 2])
-        _arr = np.zeros((full_size))
-        _arr[:] = -1
-        gate_b = tf.get_variable("gate_b", initializer=tf.constant(
-            _arr, dtype=tf.float32))
+        # _arr = np.zeros((full_size))
+        # _arr[:] = -1
+        # gate_b = tf.get_variable("gate_b", initializer=tf.constant(
+        #     _arr, dtype=tf.float32))
+        gate_b = tf.get_variable("gate_b", shape=[full_size], dtype=tf.float32)
         z = self.helper.fancy_matmul(tf.concat([carried, extra], -1),
                                      gate_w) + gate_b
         t = tf.sigmoid(tf.slice(z, [0,0,0], [-1, -1, carried_dim]))
