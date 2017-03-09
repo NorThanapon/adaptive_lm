@@ -74,12 +74,12 @@ class DoubleRNNLM(BasicRNNLM):
         self._rnn_output, self._final_state = self.helper.unroll_rnn_cell(
             self._input_emb, self._seq_len,
             self._cell, self._initial_state)
-        # self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
-        #     self._rnn_output, self._seq_len,
-        #     self._cell_top, self._initial_state_top, scope="rnn_top")
         self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
-            self._input_emb, self._seq_len,
+            self._rnn_output, self._seq_len,
             self._cell_top, self._initial_state_top, scope="rnn_top")
+        # self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
+        #     self._input_emb, self._seq_len,
+        #     self._cell_top, self._initial_state_top, scope="rnn_top")
         self._mixed_output = self._gated_update(self._rnn_output,
                                                     self._rnn_top_output)
         self._logit, self._temperature, self._prob = self.helper.create_output(

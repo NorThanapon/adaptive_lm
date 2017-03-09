@@ -3,6 +3,7 @@ import logging
 import time
 import os
 import numpy as np
+import cPickle
 
 from adaptive_lm.models.rnnlm_helper import BasicRNNHelper
 from adaptive_lm.models.basic_rnnlm import BasicRNNLM
@@ -64,6 +65,7 @@ if __name__ == '__main__':
             testing_exp_opt.build_test_fn = build_test_fn
             token_loss_path = os.path.join(opt.experiment_dir, opt.out_token_loss_file)
             token_loss_ofp = open(token_loss_path, 'w')
+            output_data = []
             def write_token_loss(collect):
                 tokens = np.reshape(collect.target, [-1])
                 weights = np.reshape(collect.weight, [-1])
@@ -71,10 +73,13 @@ if __name__ == '__main__':
                 gates = np.reshape(collect.transform_gates, [-1, opt.state_size])
                 for i in range(len(tokens)):
                     if weights[i] > 0:
-                        token_loss_ofp.write("{}\t{}\t{}\t{}\t{}\n".format(
-                            tokens[i], losses[i], gates[i].mean(), gates[i].max(), gates[i].min()))
+                        token_loss_ofp.write("{}\t{}\t{}\n".format(
+                            tokens[i], losses[i], gates[i].mean()))
+                        output_data.append((tokens[i], gates[i]))
             testing_exp_opt.collect_fn = write_token_loss
         info = lm.run(opt, testing_exp_opt, logger)
+        with open('tmp.cpickle', 'w') as ofp:
+            cPickle.dump(output_data, ofp)
         if opt.out_token_loss_file is not None:
             token_loss_ofp.close()
     logger.info('Perplexity: {}, Num tokens: {}'.format(
