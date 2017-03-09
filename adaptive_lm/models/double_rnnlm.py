@@ -57,14 +57,16 @@ class DoubleRNNLM(BasicRNNLM):
         carried_dim = int(carried.get_shape()[-1])
         extra_dim = int(extra.get_shape()[-1])
         full_size = carried_dim + extra_dim
-        gate_w = tf.get_variable("gate_w", [full_size, 1])
-        _bias_init = tf.constant(np.array([-1]), dtype=tf.float32)
-        gate_b = tf.get_variable("gate_b", initializer=_bias_init)
-        att = tf.sigmoid(
-            self.helper.fancy_matmul(
-                tf.concat([carried, extra], -1), gate_w) + gate_b)
-        self._transform_gate = att
-        o = att * extra + (1 - att) * carried
+        gate_w = tf.get_variable("gate_w", [full_size, carried_dim + 1])
+        # _bias_init = tf.constant(np.array([-1]), dtype=tf.float32)
+        # gate_b = tf.get_variable("gate_b", initializer=_bias_init)
+        gate_b = tf.get_variable("gate_b", [carried_dim + 1])
+        z = self.helper.fancy_matmul(tf.concat([carried, extra], -1),
+                                     gate_w) + gate_b
+        t = tf.sigmoid(tf.slice(z, [0,0,0], [-1, -1, 1]))
+        h = tf.tanh(tf.slice(z, [0,0, 1], [-1, -1, -1]))
+        self._transform_gate = t
+        o = tf.multiply(h, t) + tf.multiply(carried, (1-t))
         if self._opt.keep_prob < 1.0:
             o = tf.nn.dropout(o, self._opt.keep_prob)
         return o
@@ -80,7 +82,7 @@ class DoubleRNNLM(BasicRNNLM):
         # self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
         #     self._input_emb, self._seq_len,
         #     self._cell_top, self._initial_state_top, scope="rnn_top")
-        self._mixed_output = self._gated_update(self._rnn_output,
+        self._mixed_output = self._attention_update(self._rnn_output,
                                                     self._rnn_top_output)
         self._logit, self._temperature, self._prob = self.helper.create_output(
             self._mixed_output, self._emb)
