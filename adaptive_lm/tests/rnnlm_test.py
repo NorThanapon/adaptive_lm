@@ -23,8 +23,8 @@ class RNNLMTest(unittest.TestCase):
         tf.reset_default_graph()
         opt = BasicRNNLM.default_model_options()
         opt.num_layers = 2
-        opt.emb_size = 300
-        opt.state_size = 320
+        opt.emb_size = 650
+        opt.state_size = 650
         m = BasicRNNLM(opt)
         inputs, init_state = m.initialize()
         self.assertPlaceholderSize(opt, inputs.inputs)
@@ -69,8 +69,8 @@ class RNNLMTest(unittest.TestCase):
         tf.reset_default_graph()
         opt = BasicRNNLM.default_model_options()
         opt.num_layers = 1
-        opt.emb_size = 300
-        opt.state_size = 300
+        opt.emb_size = 650
+        opt.state_size = 600
         m = DoubleRNNLM(opt)
         inputs, init_states = m.initialize()
         self.assertPlaceholderSize(opt, inputs.inputs)

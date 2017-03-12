@@ -14,14 +14,17 @@ class DoubleRNNLM(BasicRNNLM):
             opt: a LazyBunch object.
             cell: (Optional) an instance of RNNCell. Default is BasicLSTMCell
             help: (Optional) an RNNHelper
+
+        TODO:
+            - Support more than 1 layer of each RNN.
         """
-        self._dropout_seed = 24601
         self._opt = LazyBunch(opt)
         self._cell = cell
         if cell is None:
+            # XXX: use manual dropout (only work with 1 layer)
             self._cell = rnnlm.get_rnn_cell(
                 opt.state_size, opt.num_layers,
-                opt.cell_type, 1.0) # use manual dropout
+                opt.cell_type, 1.0) 
         self._cell_top = cell_top
         if self._cell_top is None:
             self._cell_top = rnnlm.get_rnn_cell(
@@ -40,66 +43,63 @@ class DoubleRNNLM(BasicRNNLM):
             top_state=self._initial_state_top)
         return inputs, self._initial_states
 
-    def _gated_update(self, carried, extra):
+    def _gated_update(self, transform, extra, carried):
+        transform_dim = int(transform.get_shape()[-1])
         carried_dim = int(carried.get_shape()[-1])
         extra_dim = int(extra.get_shape()[-1])
-        full_size = carried_dim + extra_dim
-        gate_w = tf.get_variable("gate_w", [full_size, carried_dim * 2])
-        _arr = np.zeros((full_size))
+        in_size = transform_dim + extra_dim
+        out_size = carried_dim * 2
+        gate_w = tf.get_variable("gate_w", [in_size, out_size])
+        _arr = np.zeros((out_size))
         _arr[:] = -1
         gate_b = tf.get_variable("gate_b", initializer=tf.constant(
             _arr, dtype=tf.float32))
         # gate_b = tf.get_variable("gate_b", shape=[full_size], dtype=tf.float32)
-        z = self.helper.fancy_matmul(tf.concat([carried, extra], -1),
+        z = self.helper.fancy_matmul(tf.concat([transform, extra], -1),
                                      gate_w) + gate_b
         t = tf.sigmoid(tf.slice(z, [0,0,0], [-1, -1, carried_dim]))
         h = tf.tanh(tf.slice(z, [0,0, carried_dim], [-1, -1, -1]))
-        if self._opt.keep_prob < 1.0:
-            h = tf.nn.dropout(
-                h, keep_prob=self._opt.keep_prob, seed=self._dropout_seed)
         self._transform_gate = t
         o = tf.multiply(h, t) + tf.multiply(carried, (1-t))
-        # if self._opt.keep_prob < 1.0:
-        #     o = tf.nn.dropout(o, self._opt.keep_prob)
+        self._final_rnn_output = o
+        if self._opt.keep_prob < 1.0:
+            o = tf.nn.dropout(o, self._opt.keep_prob)
         return o
 
-    def _attention_update(self, carried, extra):
-        carried_dim = int(carried.get_shape()[-1])
-        extra_dim = int(extra.get_shape()[-1])
-        full_size = carried_dim + extra_dim
-        gate_w = tf.get_variable("gate_w", [full_size, carried_dim + 1])
-        # _bias_init = tf.constant(np.array([-1]), dtype=tf.float32)
-        # gate_b = tf.get_variable("gate_b", initializer=_bias_init)
-        gate_b = tf.get_variable("gate_b", [carried_dim + 1])
-        z = self.helper.fancy_matmul(tf.concat([carried, extra], -1),
-                                     gate_w) + gate_b
-        t = tf.sigmoid(tf.slice(z, [0,0,0], [-1, -1, 1]))
-        h = tf.tanh(tf.slice(z, [0,0, 1], [-1, -1, -1]))
-        if self._opt.keep_prob < 1.0:
-            h = tf.nn.dropout(
-                h, keep_prob=self._opt.keep_prob, seed=self._dropout_seed)
-        self._transform_gate = t
-        o = tf.multiply(h, t) + tf.multiply(carried, (1-t))
-        # if self._opt.keep_prob < 1.0:
-        #     o = tf.nn.dropout(o, self._opt.keep_prob)
-        return o
+    # def _attention_update(self, carried, extra):
+    #     carried_dim = int(carried.get_shape()[-1])
+    #     extra_dim = int(extra.get_shape()[-1])
+    #     full_size = carried_dim + extra_dim
+    #     gate_w = tf.get_variable("gate_w", [full_size, carried_dim + 1])
+    #     # _bias_init = tf.constant(np.array([-1]), dtype=tf.float32)
+    #     # gate_b = tf.get_variable("gate_b", initializer=_bias_init)
+    #     gate_b = tf.get_variable("gate_b", [carried_dim + 1])
+    #     z = self.helper.fancy_matmul(tf.concat([carried, extra], -1),
+    #                                  gate_w) + gate_b
+    #     t = tf.sigmoid(tf.slice(z, [0,0,0], [-1, -1, 1]))
+    #     h = tf.tanh(tf.slice(z, [0,0, 1], [-1, -1, -1]))
+    #     if self._opt.keep_prob < 1.0:
+    #         h = tf.nn.dropout(
+    #             h, keep_prob=self._opt.keep_prob, seed=self._dropout_seed)
+    #     self._transform_gate = t
+    #     o = tf.multiply(h, t) + tf.multiply(carried, (1-t))
+    #     # if self._opt.keep_prob < 1.0:
+    #     #     o = tf.nn.dropout(o, self._opt.keep_prob)
+    #     return o
 
     def forward(self):
         self._rnn_output, self._final_state = self.helper.unroll_rnn_cell(
             self._input_emb, self._seq_len,
             self._cell, self._initial_state)
+        self._full_rnn_output = self._rnn_output
         if self._opt.keep_prob < 1.0:
             self._rnn_output = tf.nn.dropout(
-                self._rnn_output, keep_prob=self._opt.keep_prob,
-                seed=self._dropout_seed)
+                self._rnn_output, keep_prob=self._opt.keep_prob)
         self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
             self._rnn_output, self._seq_len,
             self._cell_top, self._initial_state_top, scope="rnn_top")
-        # self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
-        #     self._input_emb, self._seq_len,
-        #     self._cell_top, self._initial_state_top, scope="rnn_top")
-        self._mixed_output = self._gated_update(self._rnn_output,
-                                                    self._rnn_top_output)
+        self._mixed_output = self._gated_update(
+            self._rnn_output, self._rnn_top_output, self._full_rnn_output)
         self._logit, self._temperature, self._prob = self.helper.create_output(
             self._mixed_output, self._emb)
         self._final_states = LazyBunch(word_state=self._final_state,
@@ -113,4 +113,5 @@ class DoubleRNNLM(BasicRNNLM):
     def build_full_model_graph(m):
         nodes = BasicRNNLM.build_full_model_graph(m)
         nodes.transform_gates = m._transform_gate
+        nodes.final_rnn_outputs = m._final_rnn_output
         return nodes

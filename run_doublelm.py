@@ -30,8 +30,8 @@ training_exp_opt = common_utils.LazyBunch(
     model_scope = 'LM',
     model_helper_cls = BasicRNNHelper,
     model_cls = DoubleRNNLM,
-    build_train_fn = BasicRNNLM.build_full_model_graph,
-    build_test_fn = BasicRNNLM.build_full_model_graph,
+    build_train_fn = DoubleRNNLM.build_full_model_graph,
+    build_test_fn = DoubleRNNLM.build_full_model_graph,
     training = True
 )
 
