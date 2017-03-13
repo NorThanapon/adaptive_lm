@@ -18,7 +18,8 @@ def build_test_fn(m):
         weight=nodes.targets.weights,
         token_loss=nodes.losses.token_loss,
         transform_gates=nodes.transform_gates,
-        rnn_top_outputs=nodes.rnn_top_outputs)
+        rnn_top_outputs=nodes.rnn_outputs.rnn_top_outputs,
+        rnn_outputs=nodes.rnn_outputs.rnn_outputs,)
     return nodes
 
 training_exp_opt = common_utils.LazyBunch(
@@ -71,12 +72,14 @@ if __name__ == '__main__':
                 weights = np.reshape(collect.weight, [-1])
                 losses = np.reshape(collect.token_loss, [-1])
                 gates = np.reshape(collect.transform_gates, [-1, opt.state_size])
+                rnn_outputs = np.reshape(collect.rnn_outputs, [-1, opt.state_size])
                 top_outputs = np.reshape(collect.rnn_top_outputs, [-1, opt.state_size])
                 for i in range(len(tokens)):
                     if weights[i] > 0:
                         token_loss_ofp.write("{}\t{}\t{}\n".format(
                             tokens[i], losses[i], gates[i].mean()))
-                        output_data.append([tokens[i], gates[i], top_outputs[i]])
+                        output_data.append([tokens[i], rnn_outputs[i],
+                                            top_outputs[i], gates[i]])
             testing_exp_opt.collect_fn = write_token_loss
         info = lm.run(opt, testing_exp_opt, logger)
         with open('tmp.cpickle', 'w') as ofp:
