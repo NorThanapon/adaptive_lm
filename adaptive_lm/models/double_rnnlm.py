@@ -24,7 +24,7 @@ class DoubleRNNLM(BasicRNNLM):
             # XXX: use manual dropout (only work with 1 layer)
             self._cell = rnnlm.get_rnn_cell(
                 opt.state_size, opt.num_layers,
-                opt.cell_type, 1.0) 
+                opt.cell_type, 1.0)
         self._cell_top = cell_top
         if self._cell_top is None:
             self._cell_top = rnnlm.get_rnn_cell(
@@ -113,5 +113,6 @@ class DoubleRNNLM(BasicRNNLM):
     def build_full_model_graph(m):
         nodes = BasicRNNLM.build_full_model_graph(m)
         nodes.transform_gates = m._transform_gate
+        nodes.rnn_top_outputs = m._rnn_top_output
         nodes.final_rnn_outputs = m._final_rnn_output
         return nodes

@@ -23,8 +23,9 @@ class RNNLMTest(unittest.TestCase):
         tf.reset_default_graph()
         opt = BasicRNNLM.default_model_options()
         opt.num_layers = 2
-        opt.emb_size = 650
-        opt.state_size = 650
+        opt.emb_size = 100
+        opt.state_size = 100
+        opt.vocab_size = 50
         m = BasicRNNLM(opt)
         inputs, init_state = m.initialize()
         self.assertPlaceholderSize(opt, inputs.inputs)
@@ -38,14 +39,14 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertPlaceholderSize(opt, losses.token_loss)
         self.assertEqual(losses.loss.get_shape(), ())
-        # total_parameters = 0
-        # for variable in tf.trainable_variables():
-        #     shape = variable.get_shape()
-        #     variable_parametes = 1
-        #     for dim in shape:
-        #         variable_parametes *= dim.value
-        #     total_parameters += variable_parametes
-        # print(total_parameters)
+        total_parameters = 0
+        for variable in tf.trainable_variables():
+            shape = variable.get_shape()
+            variable_parametes = 1
+            for dim in shape:
+                variable_parametes *= dim.value
+            total_parameters += variable_parametes
+        print(total_parameters)
 
     def test_smoke_decoder_rnn(self):
         tf.reset_default_graph()
@@ -69,8 +70,9 @@ class RNNLMTest(unittest.TestCase):
         tf.reset_default_graph()
         opt = BasicRNNLM.default_model_options()
         opt.num_layers = 1
-        opt.emb_size = 650
-        opt.state_size = 600
+        opt.emb_size = 100
+        opt.state_size = 88
+        opt.vocab_size = 50
         m = DoubleRNNLM(opt)
         inputs, init_states = m.initialize()
         self.assertPlaceholderSize(opt, inputs.inputs)
@@ -86,14 +88,14 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertPlaceholderSize(opt, losses.token_loss)
         self.assertEqual(losses.loss.get_shape(), ())
-        # total_parameters = 0
-        # for variable in tf.trainable_variables():
-        #     shape = variable.get_shape()
-        #     variable_parametes = 1
-        #     for dim in shape:
-        #         variable_parametes *= dim.value
-        #     total_parameters += variable_parametes
-        # print(total_parameters)
+        total_parameters = 0
+        for variable in tf.trainable_variables():
+            shape = variable.get_shape()
+            variable_parametes = 1
+            for dim in shape:
+                variable_parametes *= dim.value
+            total_parameters += variable_parametes
+        print(total_parameters)
 
 
 if __name__ == '__main__':
