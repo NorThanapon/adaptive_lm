@@ -66,6 +66,15 @@ class DoubleRNNLM(BasicRNNLM):
             o = tf.nn.dropout(o, self._opt.keep_prob)
         return o
 
+    def _fake_gated_update(self, transform, extra, carried):
+        carried_dim = int(carried.get_shape()[-1])
+        self._transform_gate = tf.constant(np.zeros((carried_dim)))
+        o = extra
+        self._final_rnn_output = o
+        if self._opt.keep_prob < 1.0:
+            o = tf.nn.dropout(o, self._opt.keep_prob)
+        return o
+
     # def _attention_update(self, carried, extra):
     #     carried_dim = int(carried.get_shape()[-1])
     #     extra_dim = int(extra.get_shape()[-1])
@@ -98,7 +107,7 @@ class DoubleRNNLM(BasicRNNLM):
         self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
             self._rnn_output, self._seq_len,
             self._cell_top, self._initial_state_top, scope="rnn_top")
-        self._mixed_output = self._gated_update(
+        self._mixed_output = self._fake_gated_update(
             self._rnn_output, self._rnn_top_output, self._full_rnn_output)
         self._logit, self._temperature, self._prob = self.helper.create_output(
             self._mixed_output, self._emb)

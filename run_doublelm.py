@@ -18,8 +18,8 @@ def build_test_fn(m):
         weight=nodes.targets.weights,
         token_loss=nodes.losses.token_loss,
         transform_gates=nodes.transform_gates,
-        rnn_top_outputs=nodes.rnn_outputs.rnn_top_outputs,
-        rnn_outputs=nodes.rnn_outputs.rnn_outputs,)
+        rnn_top_outputs=nodes.outputs.rnn_top_outputs,
+        rnn_outputs=nodes.outputs.rnn_outputs,)
     return nodes
 
 training_exp_opt = common_utils.LazyBunch(
