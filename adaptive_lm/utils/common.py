@@ -123,6 +123,8 @@ def get_common_argparse():
                         default='vocab.txt',
                         help='vocab file')
     # Parameters to configure the neural network.
+    parser.add_argument('--cell_type', type=str, default='BasicLSTMCell',
+                        help='see Tensorflow cell types')
     parser.add_argument('--state_size', type=int, default=100,
                         help='size of RNN hidden state vector')
     parser.add_argument('--emb_size', type=int, default=100,

@@ -15,6 +15,8 @@ parser.add_argument("--stopword_file", help="stopword file path",
                     default='stopwords.txt')
 parser.add_argument("--bow_vocab_size", help="Number of vocab in BOW features",
                     default=100)
+parser.add_argument("--no_unk", help="no unk symbol",
+                    dest='no_unk', action="store_true")
 args = parser.parse_args()
 
 splits = ('train', 'valid', 'test')
@@ -28,6 +30,8 @@ w_count = {
     eos_symbol:0,
     unk_symbol:0
 }
+if args.no_unk:
+    del w_count[unk_symbol]
 w_low_count = w_count.copy()
 for s in splits:
     f = os.path.join(args.text_dir, '{}.txt'.format(s))
