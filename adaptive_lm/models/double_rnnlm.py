@@ -33,14 +33,19 @@ class DoubleRNNLM(BasicRNNLM):
         if self.helper is None:
             self.helper = BasicRNNHelper(opt)
         self.helper._model = self
+        self._last_cell = rnnlm.get_rnn_cell(
+            self._opt.state_size, 1, self._opt.cell_type, self._opt.keep_prob)
 
     def initialize(self):
         inputs, self._initial_state = super(DoubleRNNLM, self).initialize()
         self._initial_state_top = self._cell_top.zero_state(
             self._opt.batch_size, tf.float32)
+        self._initial_state_last = self._last_cell.zero_state(
+            self._opt.batch_size, tf.float32)
         self._initial_states = LazyBunch(
             word_state=self._initial_state,
-            top_state=self._initial_state_top)
+            top_state=self._initial_state_top,
+            last_state=self._initial_state_last)
         return inputs, self._initial_states
 
     def _gated_update(self, transform, extra, carried):
@@ -68,12 +73,17 @@ class DoubleRNNLM(BasicRNNLM):
 
     def _fake_gated_update(self, transform, extra, carried):
         carried_dim = int(carried.get_shape()[-1])
-        self._transform_gate = tf.constant(np.zeros((carried_dim)))
-        o = extra
-        self._final_rnn_output = o
-        if self._opt.keep_prob < 1.0:
-            o = tf.nn.dropout(o, self._opt.keep_prob)
-        return o
+        self._transform_gate = tf.constant(np.ones((carried_dim)))
+        return extra
+
+    # def _fake_gated_update(self, transform, extra, carried):
+    #     carried_dim = int(carried.get_shape()[-1])
+    #     self._transform_gate = tf.constant(np.zeros((carried_dim)))
+    #     o = extra
+    #     self._final_rnn_output = o
+    #     if self._opt.keep_prob < 1.0:
+    #         o = tf.nn.dropout(o, self._opt.keep_prob)
+    #     return o
 
     # def _attention_update(self, carried, extra):
     #     carried_dim = int(carried.get_shape()[-1])
@@ -107,12 +117,16 @@ class DoubleRNNLM(BasicRNNLM):
         self._rnn_top_output, self._final_state_top = self.helper.unroll_rnn_cell(
             self._rnn_output, self._seq_len,
             self._cell_top, self._initial_state_top, scope="rnn_top")
+        self._rnn_last_output, self._final_state_last = self.helper.unroll_rnn_cell(
+            self._rnn_top_output, self._seq_len,
+            self._last_cell, self._initial_state_last, scope="rnn_final")
         self._mixed_output = self._fake_gated_update(
-            self._rnn_output, self._rnn_top_output, self._full_rnn_output)
+            self._rnn_output, self._rnn_last_output, self._full_rnn_output)
         self._logit, self._temperature, self._prob = self.helper.create_output(
             self._mixed_output, self._emb)
         self._final_states = LazyBunch(word_state=self._final_state,
-                                       top_state=self._final_state_top)
+                                       top_state=self._final_state_top,
+                                       last_state=self._final_state_last)
         outputs = LazyBunch(rnn_outputs=self._rnn_output,
                             rnn_top_outputs=self._rnn_top_output,
                             distributions=self._prob)

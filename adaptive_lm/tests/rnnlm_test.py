@@ -25,7 +25,7 @@ class RNNLMTest(unittest.TestCase):
         opt.num_layers = 2
         opt.emb_size = 100
         opt.state_size = 100
-        opt.vocab_size = 50
+        # opt.vocab_size = 50
         m = BasicRNNLM(opt)
         inputs, init_state = m.initialize()
         self.assertPlaceholderSize(opt, inputs.inputs)
@@ -71,8 +71,8 @@ class RNNLMTest(unittest.TestCase):
         opt = BasicRNNLM.default_model_options()
         opt.num_layers = 1
         opt.emb_size = 100
-        opt.state_size = 88
-        opt.vocab_size = 50
+        opt.state_size = 97
+        # opt.vocab_size = 50
         m = DoubleRNNLM(opt)
         inputs, init_states = m.initialize()
         self.assertPlaceholderSize(opt, inputs.inputs)
