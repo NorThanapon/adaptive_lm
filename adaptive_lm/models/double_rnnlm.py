@@ -74,6 +74,7 @@ class DoubleRNNLM(BasicRNNLM):
     def _fake_gated_update(self, transform, extra, carried):
         carried_dim = int(carried.get_shape()[-1])
         self._transform_gate = tf.constant(np.ones((carried_dim)))
+        self._final_rnn_output = extra
         return extra
 
     # def _fake_gated_update(self, transform, extra, carried):
