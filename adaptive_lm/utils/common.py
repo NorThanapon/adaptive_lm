@@ -231,8 +231,8 @@ def update_opt(opt, parser):
                     opt[arg[3:]] = new_opt[arg[3:]]
                 else:
                     opt[arg] = new_opt[arg]
-
-    opt.update(new_opt)
+    else:
+        opt.update(new_opt)
     return opt
 
 def save_config_file(opt):
