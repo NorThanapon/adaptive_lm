@@ -40,16 +40,17 @@ class BasicRNNHelper(object):
         seq_len = None
         if self.opt.varied_len:
             seq_len = seq_len
-        # steps = int(inputs.get_shape()[1])
-        # inputs = [tf.squeeze(_x, [1]) for _x in tf.split(inputs, steps, 1)]
-        # rnn_outputs, final_state = tf.contrib.rnn.static_rnn(
-        #     cell, inputs, initial_state=initial_state,
-        #     sequence_length=seq_len, scope=scope)
+        steps = int(inputs.get_shape()[1])
+        inputs = tf.unstack(inputs, num=steps, axis=1)
+        rnn_outputs, final_state = tf.contrib.rnn.static_rnn(
+            cell, inputs, initial_state=initial_state,
+            sequence_length=seq_len, scope=scope)
         # rnn_outputs = tf.stack([tf.reshape(_o, [self.opt.batch_size, 1, -1])
         #                         for _o in rnn_outputs], axis=1)
-        rnn_outputs, final_state = tf.nn.dynamic_rnn(
-            cell, inputs, initial_state=initial_state, sequence_length=seq_len,
-            scope=scope)
+        # rnn_outputs, final_state = tf.nn.dynamic_rnn(
+        #     cell, inputs, initial_state=initial_state,
+        #     sequence_length=seq_len,
+        #     scope=scope)
         return rnn_outputs, final_state
 
     def _flat_rnn_outputs(self, rnn_outputs):
@@ -78,18 +79,21 @@ class BasicRNNHelper(object):
 
     def create_output_logit(self, features, logit_weights):
         """ Create softmax graph. """
+        features, softmax_size = self._flat_rnn_outputs(features)
         if self.opt.get('tie_input_output_emb', False):
             softmax_w = logit_weights
         else:
-            softmax_size = features.get_shape()[-1]
+            # softmax_size = features.get_shape()[-1]
             vocab_size = self.opt.get('output_vocab_size', self.opt.vocab_size)
             softmax_w = tf.get_variable("softmax_w",
                                         [vocab_size, softmax_size])
         softmax_b = tf.get_variable("softmax_b", softmax_w.get_shape()[0])
-        logits = self.fancy_matmul(features, softmax_w, True) + softmax_b
+        # logits = self.fancy_matmul(features, softmax_w, True) + softmax_b
         temperature = tf.placeholder_with_default(1.0, shape=None,
                                                   name="logit_temperature")
-        return logits / temperature, temperature
+        logits = tf.matmul(features, softmax_w, transpose_b=True) + softmax_b
+        return logits, temperature
+        # return logits / temperature, temperature
 
     def create_target_placeholder(self):
         """ create target placeholders """
@@ -103,10 +107,12 @@ class BasicRNNHelper(object):
 
     def create_xent_loss(self, logits, targets, weights):
         """ create cross entropy loss """
+        targets = tf.reshape(targets, [-1])
+        weights = tf.reshape(weights, [-1])
         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
             logits=logits, labels=targets)
-        sum_loss = tf.reduce_sum(loss * weights)
-        mean_loss = sum_loss / (tf.reduce_sum(weights) + 1e-12)
+        sum_loss = tf.reduce_sum(tf.multiply(loss, weights))
+        mean_loss = tf.div(sum_loss, tf.reduce_sum(weights) + 1e-12)
         return loss, mean_loss
 
 

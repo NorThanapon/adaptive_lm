@@ -229,6 +229,7 @@ def get_vars_grads(loss, optimizer):
 
 
 def train_op(loss, opt):
+    loss = loss * opt.num_steps
     lr = tf.Variable(opt.learning_rate, trainable=False)
     global_step = tf.contrib.framework.get_or_create_global_step()
     optimizer = get_optimizer(lr, opt.optim)
