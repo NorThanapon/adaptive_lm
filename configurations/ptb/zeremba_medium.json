@@ -6,12 +6,14 @@
   "num_steps": 35,
   "emb_size": 650,
   "state_size": 650,
-  "lr_decay_every": 6,
+  "lr_decay_init_wait": 6,
+  "lr_decay_every": 1,
   "max_epochs": 39,
   "keep_prob": 0.5,
   "emb_keep_prob": 0.5,
   "lr_decay_factor": 0.8,
   "batch_size": 20,
+  "min_learning_rate": 0.0,
   "l2_loss_weight": 0.0,
   "vocab_size": 10000
 }

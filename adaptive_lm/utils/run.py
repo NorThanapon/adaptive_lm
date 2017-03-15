@@ -68,6 +68,9 @@ def save_model_and_state(sess, saver, state, experiment_dir, prefix):
 
 def update_lr(opt, state):
     logger = logging.getLogger("exp")
+    if state.epoch < opt.lr_decay_init_wait:
+        logger.info('Waiting for initial learning rate...')
+        return False
     logger.info('Updating learning rate...')
     old_lr = state.learning_rate
     new_lr = old_lr

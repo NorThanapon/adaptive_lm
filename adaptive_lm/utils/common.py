@@ -188,8 +188,10 @@ def get_common_argparse():
                         help='initial learning rate')
     parser.add_argument('--min_learning_rate', type=float, default=0.01,
                         help='initial learning rate')
-    parser.add_argument('--lr_decay_every', type=int, default=-1,
+    parser.add_argument('--lr_decay_init_wait', type=int, default=0,
                         help='number of epochs before learning rate decayed')
+    parser.add_argument('--lr_decay_every', type=int, default=-1,
+                        help='schedule learning rate decay')
     parser.add_argument('--lr_decay_imp', type=float, default=0.96,
                         help=('improvement ratio between val losses before'
                               'decaying learning rate'))
