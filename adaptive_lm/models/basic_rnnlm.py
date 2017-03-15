@@ -4,6 +4,7 @@ from adaptive_lm.utils.common import LazyBunch
 from rnnlm_helper import BasicRNNHelper
 from rnnlm_helper import EmbDecoderRNNHelper
 
+
 class BasicRNNLM(rnnlm.RNNLM):
     """A basic RNNLM."""
 
@@ -92,6 +93,7 @@ class BasicRNNLM(rnnlm.RNNLM):
             input_emb_trainable=True
         )
 
+
 class DecoderRNNLM(BasicRNNLM):
     """A decoder RNNLM."""
 
@@ -137,9 +139,9 @@ class DecoderRNNLM(BasicRNNLM):
     @staticmethod
     def default_model_options():
         opt = BasicRNNLM.default_model_options()
-        opt.emb_size=300
-        opt.state_size=300
-        opt.emb_keep_prob=0.75
-        opt.keep_prob=0.50
+        opt.emb_size = 300
+        opt.state_size = 300
+        opt.emb_keep_prob = 0.75
+        opt.keep_prob = 0.50
         opt.tie_input_enc_emb = True
         return opt

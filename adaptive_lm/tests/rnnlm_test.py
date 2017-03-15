@@ -5,6 +5,7 @@ from adaptive_lm.models.basic_rnnlm import DecoderRNNLM
 from adaptive_lm.models.double_rnnlm import DoubleRNNLM
 from adaptive_lm.utils.run import train_op
 
+
 class RNNLMTest(unittest.TestCase):
 
     def assertStateSize(self, opt, states):

@@ -19,6 +19,7 @@ from common import LazyBunch
 # Vocabulary
 ######################################################
 
+
 class Vocabulary(object):
     """
     A mapping between words and indexes. The code is adapted from
@@ -146,6 +147,7 @@ class Vocabulary(object):
 # DataIterator
 ######################################################
 
+
 class DataIterator(object):
     """
     Iterate over text data
@@ -208,7 +210,7 @@ class DataIterator(object):
         return seq_len, num_lines
 
     def _parse_file(self, filepath):
-        data, data_x, data_y, label_idx, label_keys  = [], [], [], [], []
+        data, data_x, data_y, label_idx, label_keys = [], [], [], [], []
         max_seq_len = 0
         num_lines = 0
         with open(filepath) as ifp:
@@ -320,6 +322,7 @@ class DataIterator(object):
 # Setnence Iterator
 ######################################################
 
+
 class SentenceIterator(DataIterator):
     """
     Iterate over sentence with padding, add is_new_sen() to check whether the
@@ -336,7 +339,7 @@ class SentenceIterator(DataIterator):
         self._sen_idx = []
         eos_id = self._vocab.eos_id
         for i, wid in enumerate(self._data):
-            if wid == eos_id and i + 1 < len(self._data) :
+            if wid == eos_id and i + 1 < len(self._data):
                 self._sen_idx.append(i+1)
 
     def init_batch(self, batch_size, num_steps):
@@ -356,7 +359,7 @@ class SentenceIterator(DataIterator):
         distance = len(self._sen_idx) / batch_size
         left_over = len(self._sen_idx) % batch_size
         self._distances = np.array([distance for _ in range(batch_size)],
-                                  dtype=np.int32)
+                                   dtype=np.int32)
         self._distances[0:left_over] += 1
         cur_pos = 0
         for i in range(batch_size):
@@ -418,6 +421,7 @@ class SentenceIterator(DataIterator):
 ######################################################
 # SenLabelIterator
 ######################################################
+
 
 class SenLabelIterator(SentenceIterator):
     """
@@ -481,6 +485,7 @@ class SenLabelIterator(SentenceIterator):
 # Module Functions
 ######################################################
 
+
 def load_datasets(opt, iterator_type=None, vocab=None,
                   dataset=['train', 'valid', 'test'], **kwargs):
     import logging
@@ -504,11 +509,13 @@ def load_datasets(opt, iterator_type=None, vocab=None,
         logger.debug('-- Data size: {}'.format(len(data[d]._data)))
     return data, out_vocab
 
+
 def serialize_iterator(data_filepath, vocab_filepath, out_filepath):
     vocab = Vocabulary.from_vocab_file(vocab_filepath)
     loader = DataIterator(vocab=vocab, file_path=data_filepath)
     with open(out_filepath, 'w') as ofp:
         cPickle.dump(loader, ofp)
+
 
 def corpus2bow(data_filepath, vocab_filepath, out_filepath):
     vocab = Vocabulary.from_vocab_file(vocab_filepath)
@@ -523,14 +530,17 @@ def corpus2bow(data_filepath, vocab_filepath, out_filepath):
     with open(out_filepath, 'w') as ofp:
         cPickle.dump(corpus_bow, ofp)
 
+
 def serialize_corpus(data_dir, split=['train', 'valid', 'test']):
     for s in split:
         corpus2bow(os.path.join(data_dir, '{}.jsonl'.format(s)),
                    os.path.join(data_dir, 'bow_vocab.txt'),
                    os.path.join(data_dir, '{}_bow.pickle'.format(s)))
-        serialize_iterator(os.path.join(data_dir, '{}.jsonl'.format(s)),
-                   os.path.join(data_dir, 'vocab.txt'),
-                   os.path.join(data_dir, '{}_iter.pickle'.format(s)))
+        serialize_iterator(
+            os.path.join(data_dir, '{}.jsonl'.format(s)),
+            os.path.join(data_dir, 'vocab.txt'),
+            os.path.join(data_dir, '{}_iter.pickle'.format(s)))
+
 
 def map_vocab_defs(vocab_filepath, def_prep_dir, out_filepath):
     vocab_t = Vocabulary.from_vocab_file(vocab_filepath)

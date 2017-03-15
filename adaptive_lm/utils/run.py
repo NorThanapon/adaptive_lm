@@ -21,6 +21,7 @@ import data
 from common import LazyBunch
 from common import get_initial_training_state
 
+
 def load_model_and_states(experiment_dir, sess, saver, prefix=["latest"]):
     logger = logging.getLogger("exp")
     states = {}
@@ -33,11 +34,12 @@ def load_model_and_states(experiment_dir, sess, saver, prefix=["latest"]):
         if os.path.exists(state_path):
             with open(state_path) as ifp:
                 states[pre] = LazyBunch.fromDict(json.load(ifp))
-                count+=1
+                count += 1
         else:
             logger.debug('State file: {} is not found.'.format(state_path))
     if count == len(states):
-        ckpt_path = os.path.join(experiment_dir, "{}_model.ckpt".format(prefix[0]))
+        ckpt_path = os.path.join(experiment_dir,
+                                 "{}_model.ckpt".format(prefix[0]))
         logger.debug('Looking for checkpoint at {}'.format(ckpt_path))
         logger.debug('- Restoring model variables...')
         saver.restore(sess, ckpt_path)
@@ -48,6 +50,7 @@ def load_model_and_states(experiment_dir, sess, saver, prefix=["latest"]):
     else:
         logger.info('No state to resume...')
         return states, False
+
 
 def save_model_and_state(sess, saver, state, experiment_dir, prefix):
     logger = logging.getLogger("exp")
@@ -61,6 +64,7 @@ def save_model_and_state(sess, saver, state, experiment_dir, prefix):
     logger.debug('- Saving state to {}'.format(state_path))
     with open(state_path, 'w') as ofp:
         ofp.write(state.toPrettyJSON())
+
 
 def update_lr(opt, state):
     logger = logging.getLogger("exp")
@@ -100,6 +104,7 @@ def update_lr(opt, state):
         return True
     return False
 
+
 def feed_state(feed_dict, state_vars, state_vals):
     if isinstance(state_vars, dict):
         for k in state_vars:
@@ -114,11 +119,13 @@ def feed_state(feed_dict, state_vars, state_vals):
     #     feed_dict[h] = state_vals[i].h
     # return feed_dict
 
+
 def map_feeddict(batch, model_feed):
     feed_dict = {}
     for k in model_feed.keys():
         feed_dict[model_feed[k]] = batch[k]
     return feed_dict
+
 
 def scheduled_report(opt, info):
     logger = logging.getLogger("exp")
@@ -127,11 +134,12 @@ def scheduled_report(opt, info):
                 info.step + 1, np.exp(info.cost / info.num_words),
                 info.num_words / (time.time() - info.start_time)))
 
+
 def run_epoch(sess, m, data, opt, train_op=tf.no_op(), collect_fn=None):
     """ train the model on the given data. """
     logger = logging.getLogger("exp")
-    info = LazyBunch(start_time = time.time(), cost = 0.0,
-                     num_words = 0, step=0, collect=[])
+    info = LazyBunch(start_time=time.time(), cost=0.0,
+                     num_words=0, step=0, collect=[])
     b, r = opt.batch_size, opt.num_steps
     zero_state = sess.run(m.init_state)
     state = zero_state
@@ -155,6 +163,7 @@ def run_epoch(sess, m, data, opt, train_op=tf.no_op(), collect_fn=None):
     info.ppl = np.exp(info.cost / info.num_words)
     return info
 
+
 def run_post_epoch(new_train_ppl, new_valid_ppl,
                    state, opt, sess=None, saver=None,
                    best_prefix="best", latest_prefix="latest"):
@@ -170,12 +179,14 @@ def run_post_epoch(new_train_ppl, new_valid_ppl,
             state.best_epoch, state.epoch))
         state.best_val_ppl = new_valid_ppl
         state.best_epoch = state.epoch
-        save_model_and_state(sess, saver, state, opt.experiment_dir, best_prefix)
+        save_model_and_state(sess, saver, state,
+                             opt.experiment_dir, best_prefix)
     else:
         logger.info('- No improvement!')
     done_training = update_lr(opt, state)
     save_model_and_state(sess, saver, state, opt.experiment_dir, latest_prefix)
     return done_training
+
 
 def get_optimizer(lr_var, optim):
     optimizer = None
@@ -189,16 +200,18 @@ def get_optimizer(lr_var, optim):
         optimizer = tf.train.GradientDescentOptimizer(lr_var)
     return optimizer
 
+
 def get_l2_loss(l2_loss_weight, tvars=None):
     if tvars is None:
         tvars = tf.trainable_variables()
     l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tvars]) * l2_loss_weight
     return l2_loss
 
+
 def get_vars_grads(loss, optimizer):
     g_v_pairs = optimizer.compute_gradients(loss)
     grads, tvars = [], []
-    for g,v in g_v_pairs:
+    for g, v in g_v_pairs:
         if g is None:
             continue
         tvars.append(v)
@@ -210,6 +223,7 @@ def get_vars_grads(loss, optimizer):
         # else:
         #     grads.append(g)
     return tvars, grads
+
 
 def train_op(loss, opt):
     lr = tf.Variable(opt.learning_rate, trainable=False)
@@ -230,6 +244,7 @@ def train_op(loss, opt):
         global_step=global_step)
     return train_op, lr
 
+
 def create_model(opt, exp_opt):
     logger = logging.getLogger("exp")
     init_scale = opt.init_scale
@@ -239,7 +254,8 @@ def create_model(opt, exp_opt):
     logger.debug('- Creating training model...')
     train_model, optim_op, lr_var = None, None, None
     if exp_opt.training:
-        with tf.variable_scope(exp_opt.model_scope, reuse=None, initializer=initializer):
+        with tf.variable_scope(exp_opt.model_scope, reuse=None,
+                               initializer=initializer):
             train_model = exp_opt.build_train_fn(exp_opt.model_cls(
                 opt, helper=exp_opt.model_helper_cls(opt)))
             optim_op, lr_var = train_op(

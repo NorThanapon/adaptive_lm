@@ -1,8 +1,4 @@
 """Common functions
-
-Todo:
-    - Colorize log http://plumberjack.blogspot.com/2010/12/colorizing-logging-output-in-terminals.html
-
 """
 import neobunch
 import logging
@@ -11,6 +7,7 @@ import collections
 import json
 import os
 import sys
+
 
 class LazyBunch(neobunch.Bunch):
     """ Just like Bunch,
@@ -47,6 +44,7 @@ class LazyBunch(neobunch.Bunch):
     def fromNamespace(ns):
         return LazyBunch.fromDict(vars(ns))
 
+
 def unicode2string(data):
     if isinstance(data, basestring):
         return str(data)
@@ -56,6 +54,7 @@ def unicode2string(data):
         return type(data)(map(unicode2string, data))
     else:
         return data
+
 
 def get_logger(log_file_path=None, name="exp"):
     root_logger = logging.getLogger(name)
@@ -76,31 +75,36 @@ def get_logger(log_file_path=None, name="exp"):
     root_logger.addHandler(console_handler)
     return root_logger
 
+
 def SUN_BRO():
     return '\[T]/ PRAISE THE SUN!\n |_|\n | |'
 
+
 def get_initial_training_state():
     return LazyBunch(
-        epoch = 0,
-        val_ppl = float('inf'),
-        best_val_ppl = float('inf'),
-        learning_rate = 0.01,
-        best_epoch = -1,
-        last_imp_val_ppl = float('inf'),
-        last_imp_epoch = -1,
-        imp_wait = 0
+        epoch=0,
+        val_ppl=float('inf'),
+        best_val_ppl=float('inf'),
+        learning_rate=0.01,
+        best_epoch=-1,
+        last_imp_val_ppl=float('inf'),
+        last_imp_epoch=-1,
+        imp_wait=0
     )
+
 
 def get_tf_sess_config(opt):
     import tensorflow as tf
     sess_config = tf.ConfigProto(log_device_placement=False,
-                                 device_count = {'GPU': 0})
+                                 device_count={'GPU': 0})
     if opt.gpu:
         sess_config = tf.ConfigProto(log_device_placement=False)
     return sess_config
 
+
 def get_common_argparse():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--gpu', dest='gpu',
                         action='store_true')
     parser.add_argument('--no-gpu', dest='gpu',
@@ -160,8 +164,8 @@ def get_common_argparse():
                         help=('(1 - dropout probability)'
                               'of other part of the model'))
     parser.add_argument('--varied_len', dest='varied_len', action='store_true',
-                        help=('create dynamic RNN graph which will not compute '
-                              'the RNN steps past the sequence length. '
+                        help=('create dynamic RNN graph which will not '
+                              'compute the RNN steps past the sequence length.'
                               'You should avoid setting this to true '
                               'if input is always in full sequence.'))
     parser.add_argument('--no-varied_len', dest='varied_len',
@@ -185,7 +189,7 @@ def get_common_argparse():
     parser.add_argument('--min_learning_rate', type=float, default=0.01,
                         help='initial learning rate')
     parser.add_argument('--lr_decay_every', type=int, default=-1,
-                        help='number of epochs before learning rate is decayed')
+                        help='number of epochs before learning rate decayed')
     parser.add_argument('--lr_decay_imp', type=float, default=0.96,
                         help=('improvement ratio between val losses before'
                               'decaying learning rate'))
@@ -196,7 +200,8 @@ def get_common_argparse():
                         help=('factor by which learning rate'
                               'is decayed (lr = lr * factor)'))
     # Parameters for outputs and reporting.
-    parser.add_argument('--experiment_dir', type=str, default='experiments/out',
+    parser.add_argument('--experiment_dir',
+                        type=str, default='experiments/out',
                         help=('directory to store final and'
                               ' intermediate results and models.'))
     parser.add_argument('--log_file', type=str, default='experiment.log',
@@ -216,6 +221,7 @@ def get_common_argparse():
                         help='frequency for progress report in training')
     return parser
 
+
 def update_opt(opt, parser):
     args = parser.parse_args()
     new_opt = LazyBunch.fromNamespace(args)
@@ -234,10 +240,12 @@ def update_opt(opt, parser):
                     opt[arg] = new_opt[arg]
     return opt
 
+
 def save_config_file(opt):
     p = os.path.join(opt.experiment_dir, opt.save_config_file)
     with open(p, 'w') as ofp:
         ofp.write(opt.toPrettyJSON())
+
 
 def ensure_dir(directory):
     if not os.path.exists(directory):

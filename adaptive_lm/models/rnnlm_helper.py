@@ -5,6 +5,7 @@ TODO:
 
 import tensorflow as tf
 
+
 class BasicRNNHelper(object):
 
     def __init__(self, opt):
@@ -28,11 +29,13 @@ class BasicRNNHelper(object):
             trainable=self.opt.input_emb_trainable)
         input_emb_var = tf.nn.embedding_lookup(emb_var, input)
         if self.opt.emb_keep_prob < 1.0:
-            input_emb_var = tf.nn.dropout(input_emb_var, self.opt.emb_keep_prob)
+            input_emb_var = tf.nn.dropout(input_emb_var,
+                                          self.opt.emb_keep_prob)
         steps = int(input_emb_var.get_shape()[1])
         return emb_var, input_emb_var
 
-    def unroll_rnn_cell(self, inputs, seq_len, cell, initial_state, scope=None):
+    def unroll_rnn_cell(self, inputs, seq_len, cell,
+                        initial_state, scope=None):
         """ Unroll RNNCell. """
         seq_len = None
         if self.opt.varied_len:
@@ -40,9 +43,10 @@ class BasicRNNHelper(object):
         # steps = int(inputs.get_shape()[1])
         # inputs = [tf.squeeze(_x, [1]) for _x in tf.split(inputs, steps, 1)]
         # rnn_outputs, final_state = tf.contrib.rnn.static_rnn(
-        #     cell, inputs, initial_state=initial_state, sequence_length=seq_len,
-        #     scope=scope)
-        # rnn_outputs = tf.stack([tf.reshape(_o, [self.opt.batch_size, 1, -1]) for _o in rnn_outputs], axis=1)
+        #     cell, inputs, initial_state=initial_state,
+        #     sequence_length=seq_len, scope=scope)
+        # rnn_outputs = tf.stack([tf.reshape(_o, [self.opt.batch_size, 1, -1])
+        #                         for _o in rnn_outputs], axis=1)
         rnn_outputs, final_state = tf.nn.dynamic_rnn(
             cell, inputs, initial_state=initial_state, sequence_length=seq_len,
             scope=scope)
@@ -78,8 +82,9 @@ class BasicRNNHelper(object):
             softmax_w = logit_weights
         else:
             softmax_size = features.get_shape()[-1]
-            vocab_size = self.opt.get('output_vocab_size' ,self.opt.vocab_size)
-            softmax_w = tf.get_variable("softmax_w", [vocab_size, softmax_size])
+            vocab_size = self.opt.get('output_vocab_size', self.opt.vocab_size)
+            softmax_w = tf.get_variable("softmax_w",
+                                        [vocab_size, softmax_size])
         softmax_b = tf.get_variable("softmax_b", softmax_w.get_shape()[0])
         logits = self.fancy_matmul(features, softmax_w, True) + softmax_b
         temperature = tf.placeholder_with_default(1.0, shape=None,
@@ -90,10 +95,10 @@ class BasicRNNHelper(object):
         """ create target placeholders """
         targets = tf.placeholder(tf.int32,
                                  [self.opt.batch_size, self.opt.num_steps],
-                                name='targets')
+                                 name='targets')
         weights = tf.placeholder(tf.float32,
                                  [self.opt.batch_size, self.opt.num_steps],
-                                name='weights')
+                                 name='weights')
         return targets, weights
 
     def create_xent_loss(self, logits, targets, weights):
@@ -103,6 +108,7 @@ class BasicRNNHelper(object):
         sum_loss = tf.reduce_sum(loss * weights)
         mean_loss = sum_loss / (tf.reduce_sum(weights) + 1e-12)
         return loss, mean_loss
+
 
 class EmbDecoderRNNHelper(BasicRNNHelper):
 
@@ -136,10 +142,8 @@ class EmbDecoderRNNHelper(BasicRNNHelper):
     def create_enc_dec_mixer(self, enc_outputs, dec_outputs):
         """ Combine encoder and decoder into a feature for output
             Args:
-                enc_outputs: A list of tensors where each tensor is a encoder output at a time step.
-                i.e. [Tensor(batch, hidden),...,Tensor(batch, hidden)]
-                dec_outputs: A list of tensors where each tensor is a decoder output at a time step.
-                i.e. [Tensor(batch, hidden),...,Tensor(batch, hidden)]
+                enc_outputs: A tensor batch x step x dim
+                dec_outputs: A tensor batch x step x dim
             Returns:
                 (feature tensor(batch*steps, hidden), hidden size)
         """

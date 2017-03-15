@@ -21,7 +21,8 @@ parser.add_argument("--stopword_file", help="stopword file path",
                     default='stopwords.txt')
 parser.add_argument("--bow_vocab_size", help="Number of vocab in BOW features",
                     default=100)
-parser.add_argument("--max_def_len", help="remove definitions that is longer than this number.",
+parser.add_argument("--max_def_len",
+                    help="remove definitions that is longer than this number.",
                     default=100)
 
 parser.add_argument('--only_train', dest='only_train', action='store_true')
@@ -45,9 +46,9 @@ for s in splits:
                                 'preprocess/{}.jsonl'.format(s)), 'w')
 w_count = {
     # sos_symbol:0,
-    eos_symbol:0,
-    unk_symbol:0,
-    def_symbol:0,
+    eos_symbol: 0,
+    unk_symbol: 0,
+    def_symbol: 0,
 }
 w_def_count = w_count.copy()
 w_low_count = w_count.copy()
@@ -60,20 +61,22 @@ for s in splits:
             parts = line.lower().strip().split('\t')
             def_tokens = nltk.word_tokenize(parts[-1])
             if limit_vocab is not None:
-                if parts[0] not in limit_vocab: # ignore word not in vocab
+                # ignore word not in vocab
+                if parts[0] not in limit_vocab:
                     continue
                 for i in range(len(def_tokens)):
                     if def_tokens[i] not in limit_vocab:
-                        def_tokens[i] = unk_symbol # replace with unk token
+                        # replace with unk token
+                        def_tokens[i] = unk_symbol
             if len(def_tokens) > args.max_def_len:
                 continue
             for t in def_tokens:
                 w_def_count[t] = w_def_count.get(t, 0) + 1
             parts[-1] = ' '.join(def_tokens)
-            data = {'meta':{'word':parts[0], 'pos':parts[1],
-                            'src':parts[args.source_index] },
+            data = {'meta': {'word': parts[0], 'pos': parts[1],
+                             'src': parts[args.source_index]},
                     'key': parts[0],
-                    'lines':[' '.join([parts[0], def_symbol, parts[-1]])]}
+                    'lines': [' '.join([parts[0], def_symbol, parts[-1]])]}
             # w_count[sos_symbol] += 1
             w_count[eos_symbol] += 1
             # w_low_count[sos_symbol] += 1
@@ -99,13 +102,15 @@ with open(vocab_filepath, 'w') as ofp:
     for w in w_count:
         ofp.write('{}\t{}\n'.format(w[0], w[1]))
 
-w_def_count = sorted(w_def_count.items(), key=operator.itemgetter(1), reverse=True)
+w_def_count = sorted(w_def_count.items(),
+                     key=operator.itemgetter(1), reverse=True)
 vocab_filepath = os.path.join(args.text_dir, 'preprocess/vocab_def.txt')
 with open(vocab_filepath, 'w') as ofp:
     for w in w_def_count:
         ofp.write('{}\t{}\n'.format(w[0], w[1]))
 
-w_low_count = sorted(w_low_count.items(), key=operator.itemgetter(1), reverse=True)
+w_low_count = sorted(w_low_count.items(),
+                     key=operator.itemgetter(1), reverse=True)
 bow_vocab_size = 0
 stopwords = set()
 with open(args.stopword_file) as ifp:

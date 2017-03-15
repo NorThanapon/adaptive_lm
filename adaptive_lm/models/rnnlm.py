@@ -3,6 +3,7 @@ import six
 import numpy as np
 import tensorflow as tf
 
+
 @six.add_metaclass(abc.ABCMeta)
 class RNNLM(object):
     """A recurrent neural network langauge model abstract interface."""
@@ -52,14 +53,16 @@ class RNNLM(object):
         """
         raise NotImplementedError
 
+
 def get_rnn_cell_class(module="tf.contrib.rnn",
                        cell_type=None):
     if cell_type is None:
         cell_type = "BasicLSTMCell"
     return eval("{}.{}".format(module, cell_type))
 
+
 def get_rnn_cell(state_size, num_stacks,
-                    cell_type=None, keep_prob=1.0):
+                 cell_type=None, keep_prob=1.0):
     cell_cls = get_rnn_cell_class(cell_type=cell_type)
     cell = cell_cls(state_size)
     if keep_prob < 1.0:

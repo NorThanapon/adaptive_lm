@@ -15,9 +15,10 @@ from adaptive_lm.utils.data import load_datasets
 from adaptive_lm.utils import common as common_utils
 from adaptive_lm.utils import run as run_utils
 
+
 def _train(opt, exp_opt, sess, saver, dataset, state,
-          train_model, valid_model, train_op, lr_var,
-          logger):
+           train_model, valid_model, train_op, lr_var,
+           logger):
     logger.info('Start training loop:')
     logger.debug('\n' + common_utils.SUN_BRO())
     for epoch in range(state.epoch, opt.max_epochs):
@@ -45,6 +46,7 @@ def _train(opt, exp_opt, sess, saver, dataset, state,
             break
     logger.info('Done training at epoch {}'.format(state.epoch + 1))
 
+
 def _initialize_variables(sess, exp_opt, logger):
     if exp_opt.init_variables is None or len(exp_opt.init_variables) == 0:
         return
@@ -55,6 +57,7 @@ def _initialize_variables(sess, exp_opt, logger):
             logger.debug("- ({}) Assign name: {}, shape: {}".format(
                 pattern, v.name, v.get_shape()))
             sess.run(tf.assign(v, value))
+
 
 def run(opt, exp_opt, logger):
     data_kwargs = exp_opt.get('data_kwargs', {})
@@ -81,6 +84,7 @@ def run(opt, exp_opt, logger):
         _, _ = run_utils.load_model_and_states(
             opt.experiment_dir, sess, saver, [exp_opt.best])
         logger.info('Running LM...')
-        info = run_utils.run_epoch(sess, test_model, dataset[exp_opt.run_split],
+        info = run_utils.run_epoch(sess, test_model,
+                                   dataset[exp_opt.run_split],
                                    opt, collect_fn=exp_opt.collect_fn)
         return info

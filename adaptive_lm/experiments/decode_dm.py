@@ -10,6 +10,7 @@ from adaptive_lm.utils import common as common_utils
 from adaptive_lm.utils import run as run_utils
 from adaptive_lm.utils import decode as decode_utils
 
+
 def run(opt, exp_opt, logger):
     data_kwargs = exp_opt.get('data_kwargs', {})
     vocab = Vocabulary.from_vocab_file(

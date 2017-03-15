@@ -27,8 +27,8 @@ for s in splits:
 
 w_count = {
     # sos_symbol:0,
-    eos_symbol:0,
-    unk_symbol:0
+    eos_symbol: 0,
+    unk_symbol: 0
 }
 if args.no_unk:
     del w_count[unk_symbol]
@@ -36,7 +36,7 @@ w_low_count = w_count.copy()
 for s in splits:
     f = os.path.join(args.text_dir, '{}.txt'.format(s))
     # XXX: Should not hard code dataset name
-    dataset = {'meta':{'name':'PTB', 'split':s}, 'key': 'ptb', 'lines':[]}
+    dataset = {'meta': {'name': 'PTB', 'split': s}, 'key': 'ptb', 'lines': []}
     with open(f) as ifp:
         for line in ifp:
             line = line.strip()
@@ -61,7 +61,8 @@ with open(vocab_filepath, 'w') as ofp:
     for w in w_count:
         ofp.write('{}\t{}\n'.format(w[0], w[1]))
 
-w_low_count = sorted(w_low_count.items(), key=operator.itemgetter(1), reverse=True)
+w_low_count = sorted(w_low_count.items(),
+                     key=operator.itemgetter(1), reverse=True)
 bow_vocab_size = 0
 stopwords = set()
 with open(args.stopword_file) as ifp:

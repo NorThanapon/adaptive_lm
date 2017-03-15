@@ -2,6 +2,7 @@ from adaptive_lm.utils import run as run_utils
 from adaptive_lm.utils import common as common_utils
 import numpy as np
 
+
 class Emb2SeqDecoder(object):
 
     def __init__(self, sess, model, in_vocab, out_vocab, opt):
@@ -32,9 +33,9 @@ class Emb2SeqDecoder(object):
 
     def put_words_to_batch(self, batch, words, set_enc_input=False):
         for b, w in enumerate(words):
-            batch.inputs[b,0] = self.in_vocab.w2i(w)
+            batch.inputs[b, 0] = self.in_vocab.w2i(w)
             if set_enc_input:
-                batch.enc_inputs[b,0] = self.in_vocab.w2i(w)
+                batch.enc_inputs[b, 0] = self.in_vocab.w2i(w)
         return batch
 
     def seed_states(self, batch, seeds):
@@ -43,7 +44,7 @@ class Emb2SeqDecoder(object):
         num_batches = batch.inputs.shape[0]
         definitions = [[] for _ in range(num_batches)]
         for i, words in enumerate(seeds):
-            self.put_words_to_batch(batch, words, i==0)
+            self.put_words_to_batch(batch, words, i == 0)
             self.collect_definitions(batch.inputs, definitions)
             feed_dict = run_utils.map_feeddict(batch, self.model.feed)
             feed_dict = run_utils.feed_state(

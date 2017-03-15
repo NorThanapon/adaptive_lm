@@ -4,6 +4,7 @@ from adaptive_lm.utils.common import LazyBunch
 from adaptive_lm.utils.data import SenLabelIterator
 from adaptive_lm.utils.data import load_datasets
 
+
 class SenLabelIteratorTest(unittest.TestCase):
 
     def test_smoke(self):
@@ -24,6 +25,7 @@ class SenLabelIteratorTest(unittest.TestCase):
         self.assertTrue(data['valid'].is_new_sen())
         self.assertEqual(batch.enc_inputs.shape, (b, r))
         self.assertEqual(batch.total, b * (r - 1))
+
 
 if __name__ == '__main__':
     unittest.main()

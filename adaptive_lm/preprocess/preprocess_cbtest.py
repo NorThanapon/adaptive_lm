@@ -27,8 +27,8 @@ for s in splits:
 book = None
 w_count = {
     # sos_symbol:0,
-    eos_symbol:0,
-    unk_symbol:0
+    eos_symbol: 0,
+    unk_symbol: 0
 }
 w_low_count = w_count.copy()
 for s in splits:
@@ -40,10 +40,10 @@ for s in splits:
                     json.dump(book, ofp)
                     ofp.write('\n')
                 parts = line.split(':')[1].strip().split('___')
-                meta = {'title':parts[1].split('.')[0],
-                        'author':parts[0]}
+                meta = {'title': parts[1].split('.')[0],
+                        'author': parts[0]}
                 key = '{}-{}'.format(meta['author'], meta['title'])
-                book = {'meta':meta, 'key': key, 'lines':[]}
+                book = {'meta': meta, 'key': key, 'lines': []}
                 ofp = ofps[s]
                 if s == 'train' and meta['author'] in addition_test_authors:
                     ofp = ofps['test']
@@ -68,7 +68,8 @@ with open(vocab_filepath, 'w') as ofp:
     for w in w_count:
         ofp.write('{}\t{}\n'.format(w[0], w[1]))
 
-w_low_count = sorted(w_low_count.items(), key=operator.itemgetter(1), reverse=True)
+w_low_count = sorted(w_low_count.items(),
+                     key=operator.itemgetter(1), reverse=True)
 bow_vocab_size = 0
 stopwords = set()
 with open(args.stopword_file) as ifp:
