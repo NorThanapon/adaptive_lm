@@ -189,11 +189,13 @@ def get_optimizer(lr_var, optim):
         optimizer = tf.train.GradientDescentOptimizer(lr_var)
     return optimizer
 
-def train_op(loss, opt):
-    lr = tf.Variable(opt.learning_rate, trainable=False)
-    global_step = tf.contrib.framework.get_or_create_global_step()
-    optimizer = get_optimizer(lr, opt.optim)
-    loss = loss * opt.batch_size
+def get_l2_loss(l2_loss_weight, tvars=None):
+    if tvars is None:
+        tvars = tf.trainable_variables()
+    l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tvars]) * l2_loss_weight
+    return l2_loss
+
+def get_vars_grads(loss, optimizer):
     g_v_pairs = optimizer.compute_gradients(loss)
     grads, tvars = [], []
     for g,v in g_v_pairs:
@@ -207,6 +209,19 @@ def train_op(loss, opt):
         #                                   g.indices, g.dense_shape))
         # else:
         #     grads.append(g)
+    return tvars, grads
+
+def train_op(loss, opt):
+    lr = tf.Variable(opt.learning_rate, trainable=False)
+    global_step = tf.contrib.framework.get_or_create_global_step()
+    optimizer = get_optimizer(lr, opt.optim)
+    # loss = loss * opt.batch_size
+    l2_loss_weight = opt.get('l2_loss_weight', 0.0)
+    if l2_loss_weight > 0.0:
+        loss = loss + get_l2_loss(l2_loss_weight)
+        # tvars, grads = get_vars_grads(loss, optimizer)
+    tvars, grads = get_vars_grads(loss, optimizer)
+
     clipped_grads, _norm = tf.clip_by_global_norm(
         grads, opt.max_grad_norm)
     g_v_pairs = zip(clipped_grads, tvars)
