@@ -200,12 +200,13 @@ def train_op(loss, opt):
         if g is None:
             continue
         tvars.append(v)
-        if "embedding_lookup" in g.name:
-            assert isinstance(g, tf.IndexedSlices)
-            grads.append(tf.IndexedSlices(g.values * opt.batch_size,
-                                          g.indices, g.dense_shape))
-        else:
-            grads.append(g)
+        grads.append(g)
+        # if "embedding_lookup" in g.name:
+        #     assert isinstance(g, tf.IndexedSlices)
+        #     grads.append(tf.IndexedSlices(g.values * opt.batch_size,
+        #                                   g.indices, g.dense_shape))
+        # else:
+        #     grads.append(g)
     clipped_grads, _norm = tf.clip_by_global_norm(
         grads, opt.max_grad_norm)
     g_v_pairs = zip(clipped_grads, tvars)
