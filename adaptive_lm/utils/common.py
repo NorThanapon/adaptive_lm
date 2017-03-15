@@ -221,7 +221,9 @@ def update_opt(opt, parser):
     new_opt = LazyBunch.fromNamespace(args)
     if args.load_config_filepath is not None:
         with open(args.load_config_filepath) as ifp:
-            opt.update(LazyBunch.fromDict(json.load(ifp)))
+            loaded_opt = LazyBunch.fromDict(json.load(ifp))
+            for k in loaded_opt.keys():
+                opt[k] = loaded_opt[k]
         for arg in sys.argv:
             if arg.startswith('--') and len(arg) > 2:
                 arg = arg[2:]
@@ -229,8 +231,8 @@ def update_opt(opt, parser):
                     opt[arg[3:]] = new_opt[arg[3:]]
                 else:
                     opt[arg] = new_opt[arg]
-    else:
-        opt.update(new_opt)
+
+    opt.update(new_opt)
     return opt
 
 def save_config_file(opt):
