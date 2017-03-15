@@ -1,0 +1,17 @@
+{
+  "init_scale": 0.1,
+  "learning_rate": 1.0,
+  "max_grad_norm": 5,
+  "num_layers": 2,
+  "num_steps": 20,
+  "emb_size": 200,
+  "state_size": 200,
+  "lr_decay_wait": 4,
+  "max_epochs": 13,
+  "keep_prob": 1.0,
+  "emb_keep_prob": 0.1,
+  "lr_decay_factor": 0.5,
+  "batch_size": 20,
+  "l2_loss_weight": 0.0,
+  "vocab_size": 10000
+}
