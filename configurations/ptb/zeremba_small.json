@@ -6,7 +6,7 @@
   "num_steps": 20,
   "emb_size": 200,
   "state_size": 200,
-  "lr_decay_wait": 4,
+  "lr_decay_every": 4,
   "max_epochs": 13,
   "keep_prob": 1.0,
   "emb_keep_prob": 0.1,
