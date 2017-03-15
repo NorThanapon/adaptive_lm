@@ -219,6 +219,7 @@ def get_common_argparse():
 def update_opt(opt, parser):
     args = parser.parse_args()
     new_opt = LazyBunch.fromNamespace(args)
+    opt.update(new_opt)
     if args.load_config_filepath is not None:
         with open(args.load_config_filepath) as ifp:
             loaded_opt = LazyBunch.fromDict(json.load(ifp))
@@ -231,8 +232,6 @@ def update_opt(opt, parser):
                     opt[arg[3:]] = new_opt[arg[3:]]
                 else:
                     opt[arg] = new_opt[arg]
-    else:
-        opt.update(new_opt)
     return opt
 
 def save_config_file(opt):
