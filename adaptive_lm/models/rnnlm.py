@@ -62,10 +62,10 @@ def get_rnn_cell_class(module="tf.contrib.rnn",
 
 
 def get_rnn_cell(state_size, num_stacks,
-                 cell_type=None, keep_prob=1.0):
+                 cell_type=None, keep_prob=1.0, is_training=False):
     cell_cls = get_rnn_cell_class(cell_type=cell_type)
     cell = cell_cls(state_size)
-    if keep_prob < 1.0:
+    if keep_prob < 1.0 and is_training:
         cell = tf.contrib.rnn.DropoutWrapper(
             cell, output_keep_prob=keep_prob)
     cell_stack = tf.contrib.rnn.MultiRNNCell(

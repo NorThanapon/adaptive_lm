@@ -260,7 +260,7 @@ def create_model(opt, exp_opt):
         with tf.variable_scope(exp_opt.model_scope, reuse=None,
                                initializer=initializer):
             train_model = exp_opt.build_train_fn(exp_opt.model_cls(
-                opt, helper=exp_opt.model_helper_cls(opt)))
+                opt, helper=exp_opt.model_helper_cls(opt), is_training=True))
             optim_op, lr_var = train_op(
                 train_model.losses.training_loss, opt)
     logger.debug('- Creating testing model...')
@@ -268,7 +268,8 @@ def create_model(opt, exp_opt):
                            initializer=initializer):
         test_opt = LazyBunch(opt, keep_prob=1.0, emb_keep_prob=1.0)
         test_model = exp_opt.build_test_fn(exp_opt.model_cls(
-            test_opt, helper=exp_opt.model_helper_cls(test_opt)))
+            test_opt, helper=exp_opt.model_helper_cls(test_opt),
+            is_training=False))
     logger.debug('Trainable variables:')
     for v in tf.trainable_variables():
         logger.debug("- {} {} {}".format(v.name, v.get_shape(), v.device))

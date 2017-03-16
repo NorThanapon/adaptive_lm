@@ -8,7 +8,8 @@ from adaptive_lm.models.rnnlm_helper import BasicRNNHelper
 
 class DoubleRNNLM(BasicRNNLM):
     """A RNNLM with 2 recurrent stack."""
-    def __init__(self, opt, cell=None, helper=None, cell_top=None):
+    def __init__(self, opt, cell=None, helper=None, cell_top=None,
+                 is_training=False):
         """Initialize BasicDecoder.
 
         Args:
@@ -30,11 +31,13 @@ class DoubleRNNLM(BasicRNNLM):
         self._cell_top = cell_top
         if self._cell_top is None:
             self._cell_top = rnnlm.get_rnn_cell(
-                opt.state_size, opt.num_layers, opt.cell_type, opt.keep_prob)
+                opt.state_size, opt.num_layers, opt.cell_type, opt.keep_prob,
+                is_training)
         self.helper = helper
         if self.helper is None:
             self.helper = BasicRNNHelper(opt)
         self.helper._model = self
+        self.is_training = is_training
 
     def initialize(self):
         inputs, self._initial_state = super(DoubleRNNLM, self).initialize()
@@ -69,7 +72,7 @@ class DoubleRNNLM(BasicRNNLM):
         self._transform_gate = t
         o = tf.multiply(h - carried, t) + carried
         self._final_rnn_output = o
-        if self._opt.keep_prob < 1.0:
+        if self._opt.keep_prob < 1.0 and self.is_training:
             o = tf.nn.dropout(o, self._opt.keep_prob)
         return o
 
@@ -117,7 +120,7 @@ class DoubleRNNLM(BasicRNNLM):
             _out, _ = self.helper._flat_rnn_outputs(_out)
         self._rnn_output = _out
         self._full_rnn_output = _out
-        if self._opt.keep_prob < 1.0:
+        if self._opt.keep_prob < 1.0 and self.is_training:
             self._rnn_output = tf.nn.dropout(
                 self._rnn_output, self._opt.keep_prob)
         _out, _state = self.helper.unroll_rnn_cell(

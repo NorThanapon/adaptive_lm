@@ -8,7 +8,7 @@ from rnnlm_helper import EmbDecoderRNNHelper
 class BasicRNNLM(rnnlm.RNNLM):
     """A basic RNNLM."""
 
-    def __init__(self, opt, cell=None, helper=None):
+    def __init__(self, opt, cell=None, helper=None, is_training=False):
         """Initialize BasicDecoder.
 
         Args:
@@ -19,12 +19,14 @@ class BasicRNNLM(rnnlm.RNNLM):
         self._opt = LazyBunch(opt)
         self._cell = cell
         if cell is None:
-            self._cell = rnnlm.get_rnn_cell(opt.state_size, opt.num_layers,
-                                            opt.cell_type, opt.keep_prob)
+            self._cell = rnnlm.get_rnn_cell(
+                opt.state_size, opt.num_layers, opt.cell_type, opt.keep_prob,
+                is_training)
         self.helper = helper
         if self.helper is None:
             self.helper = BasicRNNHelper(opt)
         self.helper._model = self
+        self.is_training = is_training
 
     def batch_size(self):
         return self._opt.batch_size
@@ -123,7 +125,8 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
             self.top_alpha = top_values
             top_dc = tf.gather(self._discourse_emb_var, topk.indices)
             o = tf.reduce_sum(tf.multiply(top_dc, top_values), axis=1)
-            if self._opt.keep_prob < 1.0:
+            o = tf.layers.batch_normalization(o, training=self.is_training)
+            if self._opt.keep_prob < 1.0 and self.is_training:
                 o = tf.nn.dropout(o, self._opt.keep_prob)
             return o
 
@@ -151,7 +154,7 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
 class DecoderRNNLM(BasicRNNLM):
     """A decoder RNNLM."""
 
-    def __init__(self, opt, cell=None, helper=None):
+    def __init__(self, opt, cell=None, helper=None, is_training=False):
         """Initialize BasicDecoder.
 
         Args:
@@ -161,7 +164,7 @@ class DecoderRNNLM(BasicRNNLM):
         """
         if helper is None:
             helper = EmbDecoderRNNHelper(opt)
-        super(DecoderRNNLM, self).__init__(opt, cell, helper)
+        super(DecoderRNNLM, self).__init__(opt, cell, helper, is_training)
 
     def initialize(self):
         inputs, self._initial_state = super(DecoderRNNLM, self).initialize()
