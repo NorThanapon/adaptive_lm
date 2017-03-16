@@ -1,6 +1,7 @@
 import unittest
 import tensorflow as tf
 from adaptive_lm.models.basic_rnnlm import BasicRNNLM
+from adaptive_lm.models.basic_rnnlm import AtomicDiscourseRNNLM
 from adaptive_lm.models.basic_rnnlm import DecoderRNNLM
 from adaptive_lm.models.double_rnnlm import DoubleRNNLM
 from adaptive_lm.models.rnnlm_helper import StaticRNNHelper
@@ -134,6 +135,26 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.targets)
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertPlaceholderSize(opt, losses.token_loss)
+        self.assertEqual(losses.mean_loss.get_shape(), ())
+
+    def test_smoke_basic_atdc_rnn(self):
+        tf.reset_default_graph()
+        opt = AtomicDiscourseRNNLM.default_model_options()
+        opt.num_layers = 2
+        opt.emb_size = 100
+        opt.state_size = 100
+        opt.discourse_size = 2000
+        opt.tie_input_output_emb = True
+        # opt.vocab_size = 50
+        m = AtomicDiscourseRNNLM(opt, helper=StaticRNNHelper(opt))
+        inputs, init_state = m.initialize()
+        self.assertPlaceholderSize(opt, inputs.inputs)
+        self.assertEqual(inputs.seq_len.get_shape(), (opt.batch_size, ))
+        self.assertStateSize(opt, init_state)
+        outputs, final_state = m.forward()
+        targets, losses = m.loss()
+        self.assertPlaceholderSize(opt, targets.targets)
+        self.assertPlaceholderSize(opt, targets.weights)
         self.assertEqual(losses.mean_loss.get_shape(), ())
 
 

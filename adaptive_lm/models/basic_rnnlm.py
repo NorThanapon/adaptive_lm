@@ -99,6 +99,46 @@ class BasicRNNLM(rnnlm.RNNLM):
         )
 
 
+class AtomicDiscourseRNNLM(BasicRNNLM):
+
+    def _compute_discourse_vector(self, rnn_output):
+        state_size = self._opt.state_size
+        discourse_size = self._opt.discourse_size
+        dim = len(rnn_output.get_shape())
+        self._discourse_emb_var = tf.get_variable(
+            "discourse", [discourse_size, state_size])
+        if dim == 2:
+            alpha = tf.matmul(rnn_output, self._discourse_emb_var,
+                              transpose_b=True)
+            top = 10
+            topk = tf.nn.top_k(alpha, top)
+            top_values = tf.reshape(
+                tf.div(topk.values, tf.reduce_sum(
+                    topk.values, axis=1, keep_dims=True)), [-1, top, 1])
+            # top_values = tf.reshape(
+            #     tf.nn.softmax(topk.values), [-1, top, 1])
+            self.top_alpha = top_values
+            top_dc = tf.gather(self._discourse_emb_var, topk.indices)
+            o = tf.reduce_sum(tf.multiply(top_dc, top_values), axis=1)
+            if self._opt.keep_prob < 1.0:
+                o = tf.nn.dropout(o, self._opt.keep_prob)
+            return o
+
+    def forward(self):
+        self._rnn_output, self._final_state = self.helper.unroll_rnn_cell(
+            self._input_emb, self._seq_len,
+            self._cell, self._initial_state)
+        if isinstance(self._rnn_output, list):
+            self._rnn_output, _ = self.helper._flat_rnn_outputs(
+                self._rnn_output)
+        self._discourse = self._compute_discourse_vector(self._rnn_output)
+        self._logit, self._temperature, self._prob = self.helper.create_output(
+            self._discourse, self._emb)
+        outputs = LazyBunch(rnn_outputs=self._rnn_output,
+                            distributions=self._prob)
+        return outputs, self._final_state
+
+
 class DecoderRNNLM(BasicRNNLM):
     """A decoder RNNLM."""
 
