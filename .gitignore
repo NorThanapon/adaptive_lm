@@ -4,10 +4,9 @@
 /data/common_defs_v1.2
 /data/ptb-100
 /data/ptb-char
-/data/wordnet_all/
+/data/common_wordnet_defs
 /data/wikitext-103
 /data/wikitext-2
-/data/wordnet_single
 .ipynb_checkpoints/
 *.pyc
 .remote-sync.json

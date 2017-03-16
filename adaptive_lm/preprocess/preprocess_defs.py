@@ -15,8 +15,8 @@ parser.add_argument("text_dir",
 
 parser.add_argument("--restrict_vocab", help="restrict vocab file path",
                     default=None)
-parser.add_argument("--source_index", help="restrict vocab file path",
-                    default=2, type=int)
+parser.add_argument("--source_indices", help="source of the definitions",
+                    default='2', type=str)
 parser.add_argument("--stopword_file", help="stopword file path",
                     default='stopwords.txt')
 parser.add_argument("--bow_vocab_size", help="Number of vocab in BOW features",
@@ -29,6 +29,15 @@ parser.add_argument('--only_train', dest='only_train', action='store_true')
 parser.set_defaults(only_train=False)
 
 args = parser.parse_args()
+args.source_indices = [int(sidx) for sidx in args.source_indices.split(',')]
+
+
+def get_source(parts, indices):
+    source = []
+    for i in indices:
+        source.append(parts[i])
+    return u'.'.join(source)
+
 
 limit_vocab = None
 if args.restrict_vocab is not None:
@@ -74,7 +83,7 @@ for s in splits:
                 w_def_count[t] = w_def_count.get(t, 0) + 1
             parts[-1] = ' '.join(def_tokens)
             data = {'meta': {'word': parts[0], 'pos': parts[1],
-                             'src': parts[args.source_index]},
+                             'src': get_source(parts, args.source_indices)},
                     'key': parts[0],
                     'lines': [' '.join([parts[0], def_symbol, parts[-1]])]}
             # w_count[sos_symbol] += 1
