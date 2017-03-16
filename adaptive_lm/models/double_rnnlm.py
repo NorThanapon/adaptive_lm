@@ -46,6 +46,7 @@ class DoubleRNNLM(BasicRNNLM):
         return inputs, self._initial_states
 
     def _gated_update(self, transform, extra, carried):
+        dim = len(transform.get_shape())
         transform_dim = int(transform.get_shape()[-1])
         carried_dim = int(carried.get_shape()[-1])
         extra_dim = int(extra.get_shape()[-1])
@@ -56,12 +57,15 @@ class DoubleRNNLM(BasicRNNLM):
         _arr[:] = self._init_gate_bias
         gate_b = tf.get_variable("gate_b", initializer=tf.constant(
             _arr, dtype=tf.float32))
-        # gate_b = tf.get_variable("gate_b", shape=[full_size],
-        #                          dtype=tf.float32)
-        z = self.helper.fancy_matmul(tf.concat([transform, extra], -1),
-                                     gate_w) + gate_b
-        t = tf.sigmoid(tf.slice(z, [0, 0, 0], [-1, -1, carried_dim]))
-        h = tf.tanh(tf.slice(z, [0, 0, carried_dim], [-1, -1, -1]))
+        if dim == 3:
+            z = self.helper.fancy_matmul(
+                tf.concat([transform, extra], -1), gate_w) + gate_b
+            t = tf.sigmoid(tf.slice(z, [0, 0, 0], [-1, -1, carried_dim]))
+            h = tf.tanh(tf.slice(z, [0, 0, carried_dim], [-1, -1, -1]))
+        else:
+            z = tf.matmul(tf.concat([transform, extra], -1), gate_w) + gate_b
+            t = tf.sigmoid(tf.slice(z, [0, 0], [-1, carried_dim]))
+            h = tf.tanh(tf.slice(z, [0, carried_dim], [-1, -1]))
         self._transform_gate = t
         o = tf.multiply(h - carried, t) + carried
         self._final_rnn_output = o
@@ -106,16 +110,21 @@ class DoubleRNNLM(BasicRNNLM):
     #     return o
 
     def forward(self):
-        self._rnn_output, self._final_state = self.helper.unroll_rnn_cell(
+        _out, self._final_state = self.helper.unroll_rnn_cell(
             self._input_emb, self._seq_len,
             self._cell, self._initial_state)
-        self._full_rnn_output = self._rnn_output
+        if isinstance(_out, list):
+            _out, _ = self.helper._flat_rnn_outputs(_out)
+        self._rnn_output = _out
+        self._full_rnn_output = _out
         if self._opt.keep_prob < 1.0:
             self._rnn_output = tf.nn.dropout(
-                self._rnn_output, keep_prob=self._opt.keep_prob)
+                self._rnn_output, self._opt.keep_prob)
         _out, _state = self.helper.unroll_rnn_cell(
             self._rnn_output, self._seq_len,
             self._cell_top, self._initial_state_top, scope="rnn_top")
+        if isinstance(_out, list):
+            _out, _ = self.helper._flat_rnn_outputs(_out)
         self._rnn_top_output, self._final_state_top = _out, _state
         self._mixed_output = self._gated_update(
             self._rnn_output, self._rnn_top_output, self._full_rnn_output)

@@ -46,19 +46,6 @@ class BasicRNNHelper(object):
             scope=scope)
         return rnn_outputs, final_state
 
-    def _static_unroll(self, cell, inputs, initial_state):
-        outputs = []
-        state = initial_state
-        with tf.variable_scope("static_rnn"):
-            for time_step in range(self.opt.num_steps):
-                if time_step > 0:
-                    tf.get_variable_scope().reuse_variables()
-                (cell_output, state) = cell(inputs[:, time_step, :], state)
-                outputs.append(cell_output)
-        outputs = tf.stack([tf.reshape(_o, [self.opt.batch_size, 1, -1])
-                            for _o in outputs], axis=1)
-        return outputs, state
-
     def create_output(self, rnn_outputs, logit_weights=None):
         logits, temperature = self.create_output_logit(
             rnn_outputs, logit_weights)
@@ -117,22 +104,26 @@ class BasicRNNHelper(object):
 class StaticRNNHelper(BasicRNNHelper):
 
     def unroll_rnn_cell(self, inputs, seq_len, cell,
-                        initial_state, scope=None):
+                        initial_state, scope='static_rnn'):
         """ Unroll RNNCell. """
-        return self._static_unroll(cell, inputs, initial_state)
+        return self._static_unroll(cell, inputs, initial_state, scope)
 
-    def _static_unroll(self, cell, inputs, initial_state):
+    def _static_unroll(self, cell, inputs, initial_state, scope):
+        if not isinstance(inputs, list) and len(inputs.get_shape()) == 2:
+            inputs = tf.reshape(inputs,
+                                [self.opt.batch_size, self.opt.num_steps, -1])
         outputs = []
         state = initial_state
-        with tf.variable_scope("static_rnn"):
+        with tf.variable_scope(scope):
             for time_step in range(self.opt.num_steps):
                 if time_step > 0:
                     tf.get_variable_scope().reuse_variables()
-                (cell_output, state) = cell(inputs[:, time_step, :], state)
+                if isinstance(inputs, list):
+                    (cell_output, state) = cell(inputs[time_step], state)
+                else:
+                    (cell_output, state) = cell(inputs[:, time_step, :], state)
                 outputs.append(cell_output)
         state_size = int(outputs[0].get_shape()[-1])
-        outputs = tf.reshape(
-            tf.concat(axis=1, values=outputs), [-1, state_size])
         return outputs, state
 
     def _flat_rnn_outputs(self, rnn_outputs):
