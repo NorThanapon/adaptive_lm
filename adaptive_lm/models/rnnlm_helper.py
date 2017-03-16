@@ -40,23 +40,24 @@ class BasicRNNHelper(object):
         seq_len = None
         if self.opt.varied_len:
             seq_len = seq_len
-        steps = int(inputs.get_shape()[1])
-        # inputs = tf.unstack(inputs, num=steps, axis=1)
-        # rnn_outputs, final_state = tf.contrib.rnn.static_rnn(
-        #     cell, inputs, initial_state=initial_state,
-        #     sequence_length=seq_len, scope=scope)
-        # rnn_outputs = tf.stack([tf.reshape(_o, [self.opt.batch_size, 1, -1])
-        #                         for _o in rnn_outputs], axis=1)
         rnn_outputs, final_state = tf.nn.dynamic_rnn(
             cell, inputs, initial_state=initial_state,
             sequence_length=seq_len,
             scope=scope)
         return rnn_outputs, final_state
 
-    def _flat_rnn_outputs(self, rnn_outputs):
-        state_size = int(rnn_outputs[0].get_shape()[-1])
-        return tf.reshape(tf.concat(rnn_outputs, 1),
-                          [-1, state_size]), state_size
+    def _static_unroll(self, cell, inputs, initial_state):
+        outputs = []
+        state = initial_state
+        with tf.variable_scope("static_rnn"):
+            for time_step in range(self.opt.num_steps):
+                if time_step > 0:
+                    tf.get_variable_scope().reuse_variables()
+                (cell_output, state) = cell(inputs[:, time_step, :], state)
+                outputs.append(cell_output)
+        outputs = tf.stack([tf.reshape(_o, [self.opt.batch_size, 1, -1])
+                            for _o in outputs], axis=1)
+        return outputs, state
 
     def create_output(self, rnn_outputs, logit_weights=None):
         logits, temperature = self.create_output_logit(
@@ -79,7 +80,6 @@ class BasicRNNHelper(object):
 
     def create_output_logit(self, features, logit_weights):
         """ Create softmax graph. """
-        # features, softmax_size = self._flat_rnn_outputs(features)
         if self.opt.get('tie_input_output_emb', False):
             softmax_w = logit_weights
         else:
@@ -91,8 +91,6 @@ class BasicRNNHelper(object):
         logits = self.fancy_matmul(features, softmax_w, True) + softmax_b
         temperature = tf.placeholder_with_default(1.0, shape=None,
                                                   name="logit_temperature")
-        # logits = tf.matmul(features, softmax_w, transpose_b=True) + softmax_b
-        # return logits, temperature
         return logits / temperature, temperature
 
     def create_target_placeholder(self):
@@ -107,13 +105,66 @@ class BasicRNNHelper(object):
 
     def create_xent_loss(self, logits, targets, weights):
         """ create cross entropy loss """
-        # targets = tf.reshape(targets, [-1])
-        # weights = tf.reshape(weights, [-1])
+        # Internally logits and labels are reshaped into 2D and 1D...
         loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
             logits=logits, labels=targets)
         sum_loss = tf.reduce_sum(tf.multiply(loss, weights))
+        training_loss = tf.div(sum_loss, self.opt.batch_size)
         mean_loss = tf.div(sum_loss, tf.reduce_sum(weights) + 1e-12)
-        return loss, mean_loss
+        return loss, training_loss, mean_loss
+
+
+class StaticRNNHelper(BasicRNNHelper):
+
+    def unroll_rnn_cell(self, inputs, seq_len, cell,
+                        initial_state, scope=None):
+        """ Unroll RNNCell. """
+        return self._static_unroll(cell, inputs, initial_state)
+
+    def _static_unroll(self, cell, inputs, initial_state):
+        outputs = []
+        state = initial_state
+        with tf.variable_scope("static_rnn"):
+            for time_step in range(self.opt.num_steps):
+                if time_step > 0:
+                    tf.get_variable_scope().reuse_variables()
+                (cell_output, state) = cell(inputs[:, time_step, :], state)
+                outputs.append(cell_output)
+        state_size = int(outputs[0].get_shape()[-1])
+        outputs = tf.reshape(
+            tf.concat(axis=1, values=outputs), [-1, state_size])
+        return outputs, state
+
+    def _flat_rnn_outputs(self, rnn_outputs):
+        state_size = int(rnn_outputs[0].get_shape()[-1])
+        return tf.reshape(tf.concat(rnn_outputs, 1),
+                          [-1, state_size]), state_size
+
+    def create_output_logit(self, features, logit_weights):
+        """ Create softmax graph. """
+        features, softmax_size = self._flat_rnn_outputs(features)
+        if self.opt.get('tie_input_output_emb', False):
+            softmax_w = logit_weights
+        else:
+            vocab_size = self.opt.get('output_vocab_size', self.opt.vocab_size)
+            softmax_w = tf.get_variable("softmax_w",
+                                        [vocab_size, softmax_size])
+        softmax_b = tf.get_variable("softmax_b", softmax_w.get_shape()[0])
+        logits = tf.matmul(features, softmax_w, transpose_b=True) + softmax_b
+        temperature = tf.placeholder_with_default(1.0, shape=None,
+                                                  name="logit_temperature")
+        return logits / temperature, temperature
+
+    def create_xent_loss(self, logits, targets, weights):
+        """ create cross entropy loss """
+        targets = tf.reshape(targets, [-1])
+        weights = tf.reshape(weights, [-1])
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            logits=logits, labels=targets)
+        sum_loss = tf.reduce_sum(tf.multiply(loss, weights))
+        training_loss = tf.div(sum_loss, self.opt.batch_size)
+        mean_loss = tf.div(sum_loss, tf.reduce_sum(weights) + 1e-12)
+        return loss, training_loss, mean_loss
 
 
 class EmbDecoderRNNHelper(BasicRNNHelper):

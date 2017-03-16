@@ -5,6 +5,7 @@ import os
 import numpy as np
 
 from adaptive_lm.models.rnnlm_helper import BasicRNNHelper
+from adaptive_lm.models.rnnlm_helper import StaticRNNHelper
 from adaptive_lm.models.basic_rnnlm import BasicRNNLM
 from adaptive_lm.utils import common as common_utils
 from adaptive_lm.experiments import lm
@@ -18,24 +19,27 @@ def build_test_fn(m):
         token_loss=nodes.losses.token_loss)
     return nodes
 
+
 training_exp_opt = common_utils.LazyBunch(
-    resume = 'latest_lm',
-    best = 'best_lm',
-    splits = ['train', 'valid'],
-    run_split = 'valid',
-    iterator_cls = None, # use default option
-    model_scope = 'LM',
-    model_helper_cls = BasicRNNHelper,
-    model_cls = BasicRNNLM,
-    build_train_fn = BasicRNNLM.build_full_model_graph,
-    build_test_fn = BasicRNNLM.build_full_model_graph,
-    training = True
+    resume='latest_lm',
+    best='best_lm',
+    splits=['train', 'valid'],
+    run_split='valid',
+    # use default option
+    iterator_cls=None,
+    model_scope='LM',
+    model_helper_cls=StaticRNNHelper,
+    model_cls=BasicRNNLM,
+    build_train_fn=BasicRNNLM.build_full_model_graph,
+    build_test_fn=BasicRNNLM.build_full_model_graph,
+    training=True
 )
 
-testing_exp_opt = common_utils.LazyBunch(training_exp_opt,
-    splits = ['valid'],
-    run_split = 'valid',
-    training = False
+testing_exp_opt = common_utils.LazyBunch(
+    training_exp_opt,
+    splits=['valid'],
+    run_split='valid',
+    training=False
 )
 
 if __name__ == '__main__':
@@ -49,7 +53,8 @@ if __name__ == '__main__':
     common_utils.ensure_dir(opt.experiment_dir)
     if opt.save_config_file is not None:
         common_utils.save_config_file(opt)
-    logger = common_utils.get_logger(os.path.join(opt.experiment_dir, opt.log_file))
+    logger = common_utils.get_logger(
+        os.path.join(opt.experiment_dir, opt.log_file))
     if opt.debug:
         logger.setLevel(logging.DEBUG)
     else:
@@ -60,8 +65,10 @@ if __name__ == '__main__':
     else:
         if opt.out_token_loss_file is not None:
             testing_exp_opt.build_test_fn = build_test_fn
-            token_loss_path = os.path.join(opt.experiment_dir, opt.out_token_loss_file)
+            token_loss_path = os.path.join(
+                opt.experiment_dir, opt.out_token_loss_file)
             token_loss_ofp = open(token_loss_path, 'w')
+
             def write_token_loss(collect):
                 tokens = np.reshape(collect.target, [-1])
                 weights = np.reshape(collect.weight, [-1])

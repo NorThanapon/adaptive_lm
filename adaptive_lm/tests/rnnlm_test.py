@@ -40,7 +40,7 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.targets)
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertPlaceholderSize(opt, losses.token_loss)
-        self.assertEqual(losses.loss.get_shape(), ())
+        self.assertEqual(losses.mean_loss.get_shape(), ())
         # total_parameters = 0
         # for variable in tf.trainable_variables():
         #     shape = variable.get_shape()
@@ -66,7 +66,7 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.targets)
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertPlaceholderSize(opt, losses.token_loss)
-        self.assertEqual(losses.loss.get_shape(), ())
+        self.assertEqual(losses.mean_loss.get_shape(), ())
 
     def test_smoke_double_rnn(self):
         tf.reset_default_graph()
@@ -89,7 +89,7 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.targets)
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertPlaceholderSize(opt, losses.token_loss)
-        self.assertEqual(losses.loss.get_shape(), ())
+        self.assertEqual(losses.mean_loss.get_shape(), ())
         # total_parameters = 0
         # for variable in tf.trainable_variables():
         #     shape = variable.get_shape()

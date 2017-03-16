@@ -14,24 +14,24 @@ from adaptive_lm.utils.data import SenLabelIterator
 from adaptive_lm.utils.data import Vocabulary
 
 training_exp_opt = common_utils.LazyBunch(
-    resume = 'latest_lm',
-    best = 'best_lm',
-    splits = ['train', 'valid'],
-    run_split = 'valid',
-    iterator_cls = SenLabelIterator,
-    model_scope = 'DM',
-    model_helper_cls = EmbDecoderRNNHelper,
-    model_cls = DecoderRNNLM,
-    build_train_fn = DecoderRNNLM.build_full_model_graph,
-    build_test_fn = DecoderRNNLM.build_full_model_graph,
-    init_variables = [],
-    training = True,
-    data_kwargs = common_utils.LazyBunch()
+    resume='latest_lm',
+    best='best_lm',
+    splits=['train', 'valid'],
+    run_split='valid',
+    iterator_cls=SenLabelIterator,
+    model_scope='DM',
+    model_helper_cls=EmbDecoderRNNHelper,
+    model_cls=DecoderRNNLM,
+    build_train_fn=DecoderRNNLM.build_full_model_graph,
+    build_test_fn=DecoderRNNLM.build_full_model_graph,
+    init_variables=[],
+    training=True,
+    data_kwargs=common_utils.LazyBunch()
 )
 
 decoding_exp_opt = common_utils.LazyBunch(
     training_exp_opt,
-    training = False)
+    training=False)
 
 if __name__ == '__main__':
     global_time = time.time()
@@ -73,7 +73,8 @@ if __name__ == '__main__':
     common_utils.ensure_dir(opt.experiment_dir)
     if opt.save_config_file is not None:
         common_utils.save_config_file(opt)
-    logger = common_utils.get_logger(os.path.join(opt.experiment_dir, opt.log_file))
+    logger = common_utils.get_logger(
+        os.path.join(opt.experiment_dir, opt.log_file))
     if opt.debug:
         logger.setLevel(logging.DEBUG)
     else:

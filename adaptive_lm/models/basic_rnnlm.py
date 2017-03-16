@@ -53,10 +53,14 @@ class BasicRNNLM(rnnlm.RNNLM):
 
     def loss(self):
         self._target, self._weight = self.helper.create_target_placeholder()
-        self._token_loss, self._loss = self.helper.create_xent_loss(
-            self._logit, self._target, self._weight)
+        self._token_loss, self._training_loss, self._mean_loss \
+            = self.helper.create_xent_loss(
+                self._logit, self._target, self._weight)
         target_holder = LazyBunch(targets=self._target, weights=self._weight)
-        losses = LazyBunch(token_loss=self._token_loss, loss=self._loss)
+        losses = LazyBunch(
+            token_loss=self._token_loss,
+            mean_loss=self._mean_loss,
+            training_loss=self._training_loss)
         return target_holder, losses
 
     @staticmethod
@@ -71,7 +75,8 @@ class BasicRNNLM(rnnlm.RNNLM):
             lengths=inputs.seq_len)
         fetch = LazyBunch(
             final_state=final_state,
-            eval_loss=losses.loss
+            eval_loss=losses.mean_loss,
+            training_loss=losses.training_loss
         )
         return LazyBunch(
             inputs=inputs, init_state=init_state, outputs=outputs,

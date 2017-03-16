@@ -229,7 +229,6 @@ def get_vars_grads(loss, optimizer):
 
 
 def train_op(loss, opt):
-    loss = loss * opt.num_steps
     lr = tf.Variable(opt.learning_rate, trainable=False)
     global_step = tf.contrib.framework.get_or_create_global_step()
     optimizer = get_optimizer(lr, opt.optim)
@@ -243,10 +242,10 @@ def train_op(loss, opt):
     clipped_grads, _norm = tf.clip_by_global_norm(
         grads, opt.max_grad_norm)
     g_v_pairs = zip(clipped_grads, tvars)
-    train_op = optimizer.apply_gradients(
+    optim_op = optimizer.apply_gradients(
         g_v_pairs,
         global_step=global_step)
-    return train_op, lr
+    return optim_op, lr
 
 
 def create_model(opt, exp_opt):
@@ -263,7 +262,7 @@ def create_model(opt, exp_opt):
             train_model = exp_opt.build_train_fn(exp_opt.model_cls(
                 opt, helper=exp_opt.model_helper_cls(opt)))
             optim_op, lr_var = train_op(
-                train_model.losses.loss, opt)
+                train_model.losses.training_loss, opt)
     logger.debug('- Creating testing model...')
     with tf.variable_scope(exp_opt.model_scope, reuse=exp_opt.training,
                            initializer=initializer):
