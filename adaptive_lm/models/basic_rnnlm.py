@@ -106,11 +106,14 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
         discourse_size = self._opt.discourse_size
         dim = len(rnn_output.get_shape())
         self._discourse_emb_var = tf.get_variable(
-            "discourse", [discourse_size, state_size])
+            "discourse_w", [discourse_size, state_size])
+        self._discourse_b = tf.get_variable(
+            "discourse_b", [discourse_size])
         if dim == 2:
-            alpha = tf.matmul(rnn_output, self._discourse_emb_var,
-                              transpose_b=True)
-            top = 10
+            alpha = tf.nn.relu(tf.matmul(rnn_output, self._discourse_emb_var,
+                                         transpose_b=True) + self._discourse_b)
+            # alpha = tf.nn.dropout(alpha, 0.75)
+            top = 20
             topk = tf.nn.top_k(alpha, top)
             top_values = tf.reshape(
                 tf.div(topk.values, tf.reduce_sum(
@@ -137,6 +140,12 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
         outputs = LazyBunch(rnn_outputs=self._rnn_output,
                             distributions=self._prob)
         return outputs, self._final_state
+
+    # def loss(self):
+    #     target_holder, losses = super(AtomicDiscourseRNNLM, self).loss()
+    #     l1_loss = tf.norm(self.top_alpha, ord=1) * 1e-2
+    #     losses.training_loss = losses.training_loss + l1_loss
+    #     return target_holder, losses
 
 
 class DecoderRNNLM(BasicRNNLM):
