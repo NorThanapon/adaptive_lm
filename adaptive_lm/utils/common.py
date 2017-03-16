@@ -133,6 +133,10 @@ def get_common_argparse():
                         help='size of RNN hidden state vector')
     parser.add_argument('--emb_size', type=int, default=100,
                         help='size of character embeddings')
+    parser.add_argument('--tie_input_output_emb',
+                        dest='tie_input_output_emb',
+                        action='store_true',
+                        help='WT regularization')
     parser.add_argument('--num_layers', type=int, default=1,
                         help='number of layers in the RNN')
     parser.add_argument('--num_steps', type=int, default=10,
