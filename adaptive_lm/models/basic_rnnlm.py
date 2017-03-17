@@ -137,15 +137,20 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
             self._rnn_output, _ = self.helper._flat_rnn_outputs(
                 self._rnn_output)
         self._discourse = self._compute_discourse_vector(self._rnn_output)
+        self._opt.output_vocab_size = self._opt.vocab_size * 2
         self._logit, self._temperature, self._prob = self.helper.create_output(
             self._discourse, self._emb)
+        channel_logits = tf.reshape(
+            self._logit,
+            [self._opt.batch_size * self._opt.num_steps, - 1, 2])
+        self._logit = tf.reduce_max(channel_logits, axis=2)
         outputs = LazyBunch(rnn_outputs=self._rnn_output,
                             distributions=self._prob)
         return outputs, self._final_state
 
     def loss(self):
         target_holder, losses = super(AtomicDiscourseRNNLM, self).loss()
-        l1_loss = tf.norm(_alpha, ord=1) * 1e-7
+        l1_loss = tf.norm(self.alpha, ord=1) * 1e-7
         losses.training_loss = losses.training_loss + l1_loss
         return target_holder, losses
 
