@@ -107,7 +107,6 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
 
     def _compute_discourse_vector(self, rnn_output):
         state_size = self._opt.state_size
-        # discourse_size = self._opt.discourse_size
         dim = len(rnn_output.get_shape())
         _disc = np.random.uniform(size=[state_size]*2,
                                   high=self._opt.init_scale,
@@ -117,9 +116,10 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
         self._discourse_emb_var = tf.get_variable(
             "discourse_w", initializer=_disc)
         if dim == 2:
-            alpha = tf.nn.relu(tf.matmul(rnn_output, self._discourse_emb_var))
+            alpha = tf.nn.sigmoid(tf.matmul(
+                rnn_output, self._discourse_emb_var))
             self.alpha = alpha
-            top = 20
+            top = int(self._opt.state_size / 20)
             topk = tf.nn.top_k(alpha, top)
             top_values = tf.reshape(
                 tf.nn.softmax(topk.values), [-1, top, 1])
@@ -145,8 +145,7 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
 
     def loss(self):
         target_holder, losses = super(AtomicDiscourseRNNLM, self).loss()
-        l1_loss = tf.add_n([tf.norm(_alpha, ord=1)
-                            for _alpha in tf.unstack(self.alpha)]) * 1e-5
+        l1_loss = tf.norm(_alpha, ord=1) * 1e-7
         losses.training_loss = losses.training_loss + l1_loss
         return target_holder, losses
 
