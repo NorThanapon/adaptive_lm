@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 import rnnlm
 from adaptive_lm.utils.common import LazyBunch
@@ -97,6 +98,7 @@ class BasicRNNLM(rnnlm.RNNLM):
             vocab_size=10000,
             emb_size=100,
             state_size=100,
+            init_scale=0.1,
             input_emb_trainable=True
         )
 
@@ -105,27 +107,31 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
 
     def _compute_discourse_vector(self, rnn_output):
         state_size = self._opt.state_size
-        discourse_size = self._opt.discourse_size
+        # discourse_size = self._opt.discourse_size
         dim = len(rnn_output.get_shape())
+        _disc = np.random.uniform(size=[state_size]*2,
+                                  high=self._opt.init_scale,
+                                  low=-self._opt.init_scale).astype(np.float32)
+        _disc += np.identity(state_size, dtype=np.float32)
+        _disc /= state_size
         self._discourse_emb_var = tf.get_variable(
-            "discourse_w", [discourse_size, state_size])
+            "discourse_w", initializer=_disc)
         self._discourse_b = tf.get_variable(
-            "discourse_b", [discourse_size])
+            "discourse_b", [state_size])
         if dim == 2:
             alpha = tf.nn.relu(tf.matmul(rnn_output, self._discourse_emb_var,
                                          transpose_b=True) + self._discourse_b)
             # alpha = tf.nn.dropout(alpha, 0.75)
             top = 20
             topk = tf.nn.top_k(alpha, top)
-            top_values = tf.reshape(
-                tf.div(topk.values, tf.reduce_sum(
-                    topk.values, axis=1, keep_dims=True)), [-1, top, 1])
             # top_values = tf.reshape(
-            #     tf.nn.softmax(topk.values), [-1, top, 1])
+            #     tf.div(topk.values, tf.reduce_sum(
+            #         topk.values, axis=1, keep_dims=True)), [-1, top, 1])
+            top_values = tf.reshape(
+                tf.nn.softmax(topk.values), [-1, top, 1])
             self.top_alpha = top_values
             top_dc = tf.gather(self._discourse_emb_var, topk.indices)
             o = tf.reduce_sum(tf.multiply(top_dc, top_values), axis=1)
-            o = tf.layers.batch_normalization(o, training=self.is_training)
             if self._opt.keep_prob < 1.0 and self.is_training:
                 o = tf.nn.dropout(o, self._opt.keep_prob)
             return o
@@ -144,11 +150,11 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
                             distributions=self._prob)
         return outputs, self._final_state
 
-    # def loss(self):
-    #     target_holder, losses = super(AtomicDiscourseRNNLM, self).loss()
-    #     l1_loss = tf.norm(self.top_alpha, ord=1) * 1e-2
-    #     losses.training_loss = losses.training_loss + l1_loss
-    #     return target_holder, losses
+    def loss(self):
+        target_holder, losses = super(AtomicDiscourseRNNLM, self).loss()
+        l1_loss = tf.norm(self.top_alpha, ord=1) * 1e-2
+        losses.training_loss = losses.training_loss + l1_loss
+        return target_holder, losses
 
 
 class DecoderRNNLM(BasicRNNLM):
