@@ -116,20 +116,13 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
         _disc /= state_size
         self._discourse_emb_var = tf.get_variable(
             "discourse_w", initializer=_disc)
-        self._discourse_b = tf.get_variable(
-            "discourse_b", [state_size])
         if dim == 2:
-            alpha = tf.nn.relu(tf.matmul(rnn_output, self._discourse_emb_var,
-                                         transpose_b=True) + self._discourse_b)
-            # alpha = tf.nn.dropout(alpha, 0.75)
+            alpha = tf.nn.relu(tf.matmul(rnn_output, self._discourse_emb_var))
+            self.alpha = alpha
             top = 20
             topk = tf.nn.top_k(alpha, top)
-            # top_values = tf.reshape(
-            #     tf.div(topk.values, tf.reduce_sum(
-            #         topk.values, axis=1, keep_dims=True)), [-1, top, 1])
             top_values = tf.reshape(
                 tf.nn.softmax(topk.values), [-1, top, 1])
-            self.top_alpha = top_values
             top_dc = tf.gather(self._discourse_emb_var, topk.indices)
             o = tf.reduce_sum(tf.multiply(top_dc, top_values), axis=1)
             if self._opt.keep_prob < 1.0 and self.is_training:
@@ -152,7 +145,8 @@ class AtomicDiscourseRNNLM(BasicRNNLM):
 
     def loss(self):
         target_holder, losses = super(AtomicDiscourseRNNLM, self).loss()
-        l1_loss = tf.norm(self.top_alpha, ord=1) * 1e-2
+        l1_loss = tf.add_n([tf.norm(_alpha, ord=1)
+                            for _alpha in tf.unstack(self.alpha)]) * 1e-5
         losses.training_loss = losses.training_loss + l1_loss
         return target_holder, losses
 
