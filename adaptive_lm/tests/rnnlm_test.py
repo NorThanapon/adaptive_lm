@@ -144,7 +144,7 @@ class RNNLMTest(unittest.TestCase):
         opt.emb_size = 100
         opt.state_size = 100
         opt.discourse_size = 2000
-        opt.tie_input_output_emb = True
+        opt.tie_input_output_emb = False
         # opt.vocab_size = 50
         m = AtomicDiscourseRNNLM(opt, helper=StaticRNNHelper(opt))
         inputs, init_state = m.initialize()
@@ -156,7 +156,8 @@ class RNNLMTest(unittest.TestCase):
         self.assertPlaceholderSize(opt, targets.targets)
         self.assertPlaceholderSize(opt, targets.weights)
         self.assertEqual(losses.mean_loss.get_shape(), ())
-
+        for variable in tf.trainable_variables():
+            print(variable)
 
 if __name__ == '__main__':
     unittest.main()

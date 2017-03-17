@@ -17,7 +17,7 @@ class BasicRNNLM(rnnlm.RNNLM):
             cell: (Optional) an instance of RNNCell. Default is BasicLSTMCell
             help: (Optional) an RNNHelper
         """
-        self._opt = LazyBunch(opt)
+        self._opt = opt
         self._cell = cell
         if cell is None:
             self._cell = rnnlm.get_rnn_cell(
