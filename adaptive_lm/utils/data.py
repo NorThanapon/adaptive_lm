@@ -129,12 +129,12 @@ class Vocabulary(object):
 
     @staticmethod
     def list_ids_from_file(filepath, vocab):
-        l = []
+        output = []
         with codecs.open(filepath, 'r', 'utf-8') as ifp:
             for line in ifp:
                 word = line.strip().split()[0]
-                l.append(vocab.w2i(word))
-        return l
+                output.append(vocab.w2i(word))
+        return output
 
     @staticmethod
     def create_vocab_mask(keep_vocab, full_vocab):
@@ -256,7 +256,8 @@ class DataIterator(object):
         self.x = np.zeros([batch_size, num_steps], np.int32)
         self.y = np.zeros([batch_size, num_steps], np.int32)
         self.w = np.zeros([batch_size, num_steps], np.uint8)
-        self.l = [[None for _ in range(num_steps)] for _ in range(batch_size)]
+        self.label = [[None for _ in range(num_steps)]
+                      for _ in range(batch_size)]
         self.seq_len = np.zeros([batch_size], np.int32)
         self.seq_len[:] = self._num_steps
         self._pointers = np.zeros([batch_size], np.int32)
@@ -281,9 +282,9 @@ class DataIterator(object):
         # reset old data
         self.x[:], self.y[:] = self._x_padding_id, self._y_padding_id
         self.w[:], self.seq_len[:] = 0, 0
-        for i in range(len(self.l)):
-            for j in range(len(self.l[0])):
-                self.l[i][j] = -1
+        for i in range(len(self.label)):
+            for j in range(len(self.label[0])):
+                self.label[i][j] = -1
         # populating new data
         for i_batch in range(self._batch_size):
             for i_token in range(self._num_steps):
@@ -353,7 +354,8 @@ class SentenceIterator(DataIterator):
         self.x = np.zeros([batch_size, num_steps], np.int32)
         self.y = np.zeros([batch_size, num_steps], np.int32)
         self.w = np.zeros([batch_size, num_steps], np.uint8)
-        self.l = [[None for _ in range(num_steps)] for _ in range(batch_size)]
+        self.label = [[None for _ in range(num_steps)]
+                      for _ in range(batch_size)]
         self.seq_len = np.zeros([batch_size], np.int32)
         self._pointers = np.zeros([batch_size], np.int32)
         distance = len(self._sen_idx) / batch_size
@@ -387,9 +389,9 @@ class SentenceIterator(DataIterator):
         # reset old data
         self.x[:], self.y[:] = self._padding_id, self._padding_id
         self.w[:], self.seq_len[:] = 0, 0
-        for i in range(len(self.l)):
-            for j in range(len(self.l[0])):
-                self.l[i][j] = None
+        for i in range(len(self.label)):
+            for j in range(len(self.label[0])):
+                self.label[i][j] = None
         # populating new data
         for i_batch in range(self._batch_size):
             if self._read_sentences[i_batch] >= self._distances[i_batch]:
@@ -405,7 +407,8 @@ class SentenceIterator(DataIterator):
                 self.w[i_batch, i_step] = 1
                 self.seq_len[i_batch] += 1
                 self._read_tokens[i_batch] += 1
-                self.l[i_batch][i_step] = self._find_label(cur_pos + i_step)
+                self.label[i_batch][i_step] = self._find_label(
+                    cur_pos + i_step)
                 if self._data[cur_pos + i_step + 1] == self._vocab.eos_id:
                     self._read_tokens[i_batch] = -1
         return self.format_batch()
@@ -464,8 +467,8 @@ class SenLabelIterator(SentenceIterator):
             return None
         for i in range(self._batch_size):
             for j in range(self._num_steps):
-                if self.l[i][j] is not None:
-                    self._l_arr[i, j] = self.l[i][j]
+                if self.label[i][j] is not None:
+                    self._l_arr[i, j] = self.label[i][j]
         if self.is_new_sen() and self._num_seeds - 1 > 0:
             self.w[:, 0:self._num_seeds - 1] = 0
         return self.format_batch()
